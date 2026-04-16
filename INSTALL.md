@@ -22,8 +22,15 @@ Welcome to **Verdant**, the precision care platform for modern plant collectors.
 
 Ensure your system meets the following requirements:
 
+### Server Requirements
 - **Docker & Docker Compose** (Required for deployment)
 - **Git** (for version control)
+
+### Client Requirements (Local AI Support)
+For on-device AI acceleration (Harmonization, Translation, Diagnosis), we recommend the following hardware:
+- **Mobile**: Pixel 9 Pro (Tensor G4) or iPhone 16 Pro (A18 Pro).
+- **Browser**: Chrome (with 'Prompt API' enabled in chrome://flags) or Safari (with WebGPU).
+- **Note**: If Local AI is not supported or disabled, the system seamlessly falls back to Cloud Gemini.
 
 ### System Preparation (Ubuntu/Debian)
 
@@ -64,8 +71,10 @@ nano .env
 ```
 
 ### A. Core AI & Search (Required)
-- **Google Gemini API**: Powers AI-driven care advice. Obtain at [Google AI Studio](https://aistudio.google.com/).
+- **Hybrid AI Architecture**: Verdant uses a mix of Cloud and Local AI.
+- **Google Gemini API**: Powers complex cloud-based reasoning and image analysis. Obtain at [Google AI Studio](https://aistudio.google.com/).
   - Set `GEMINI_API_KEY`.
+- **On-Device AI**: Used for data synthesis and translation. Enabled via the **System Context** toggle in the UI. No additional keys required, as it uses the device's native silicon.
   - **Required Configuration**:
     1. **Enable Custom Search API**: Even with a key, the service must be enabled. Go to the [Google Cloud Library](https://console.cloud.google.com/apis/library), search for "Custom Search API", and click **Enable**.
     2. **Check API Key Restrictions**: If your key is restricted, ensure "Custom Search API" is allowed. Go to **APIs & Services > Credentials**, click your API key, and under **API restrictions**, ensure **Custom Search API** is checked in the dropdown. Save and allow 5 minutes for propagation.

@@ -34,22 +34,27 @@ export const InventoryProvider: React.FC<{ children: ReactNode }> = ({ children 
         if (Array.isArray(remoteData)) {
           setInventory(remoteData);
           setIsSynced(true);
-          setIsLoading(false); // First sync complete, data is verified
         }
       }
     } catch (e) {
       console.warn("Inventory Sync: Proxmox Node unreachable.");
+      setIsSynced(false);
+    } finally {
+      setIsLoading(false);
     }
   }, [token]);
 
-  // Initial Hydration - DISABLED for mobile data integrity (Always verify with server)
+  // Initial Hydration - Restore for mobile resilience
   useEffect(() => {
     const hydrate = async () => {
-      // We no longer hydrate from localStorage as requested for mobile devices (Android/iOS)
+      try {
+        const saved = localStorage.getItem('verdant_inventory_v8');
+        if (saved) setInventory(JSON.parse(saved));
+      } catch (e) {}
       setIsPersistenceReady(true);
-      // isLoading remains true until first successful refreshInventoryData
       
-      if (token) await refreshInventoryData();
+      if (!token) setIsLoading(false);
+      else await refreshInventoryData();
     };
     hydrate();
   }, [token, refreshInventoryData]);

@@ -14,6 +14,20 @@ export interface SystemLog {
   created_at: string;
 }
 
+export interface UsageData {
+  gemini_count: number;
+  gemini_tokens: number;
+  plantnet_count: number;
+  trefle_count: number;
+  perenual_count: number;
+  serper_count: number;
+  opb_count: number;
+  local_ai_count: number;
+  local_ai_tokens: number;
+  system_load: string;
+  recent_logs: any[];
+}
+
 interface Notification {
   message: string;
   type: NotificationType;
@@ -29,6 +43,7 @@ interface SystemContextType {
   showNotification: (message: string, type?: NotificationType) => void;
   clearNotification: () => void;
   fetchSystemLogs: () => Promise<SystemLog[]>;
+  fetchUsage: () => Promise<UsageData | null>;
   isLocalAiSupported: boolean;
   isLocalAiEnabled: boolean;
   setLocalAiEnabled: (enabled: boolean) => void;
@@ -110,6 +125,18 @@ export const SystemProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   }, [token]);
 
+  const fetchUsage = useCallback(async () => {
+    if (!token) return null;
+    try {
+      const res = await fetchWithAuth('/api/system/usage', token);
+      if (res.ok) return await res.json();
+      return null;
+    } catch (e) {
+      console.error("Failed to fetch system usage:", e);
+      return null;
+    }
+  }, [token]);
+
   const rpm = hits.length;
   
   useEffect(() => {
@@ -129,6 +156,7 @@ export const SystemProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       showNotification, 
       clearNotification,
       fetchSystemLogs,
+      fetchUsage,
       isLocalAiSupported,
       isLocalAiEnabled,
       setLocalAiEnabled,

@@ -98,12 +98,9 @@ export const PlantProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               if (localIdx === -1) {
                 merged.push(remote);
               } else {
-                // If remote exists, overwrite local to ensure server consistency
                 merged[localIdx] = remote;
               }
             });
-            // Filter out houses that are not in the remote list (meaning they were deleted)
-            // UNLESS they were just created locally and haven't synced yet (but here we are after a sync)
             return merged.filter(h => remoteHouses.some(rh => rh.id === h.id) || h.id.startsWith('h-temp-'));
           });
         }
@@ -113,29 +110,39 @@ export const PlantProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (Array.isArray(remoteTasks)) setTasks(remoteTasks);
       }
       setIsSynced(true);
-      setIsLoading(false); // First sync complete, data is verified
     } catch (e) { 
-      console.warn("Sync Heartbeat Failed: Proxmox Node Offline."); 
+      console.warn("[SYSTEM] Sync Heartbeat Failed: Proxmox Node Offline. Using local cache."); 
       setIsSynced(false);
-      // If we've never loaded, we might want to allow a fallback here, 
-      // but the requirement is to verify with server.
+    } finally {
+      setIsLoading(false); // ENSURE app unfreezes even on failure
     }
   }, [token]);
 
-  // Initial Hydration - DISABLED for mobile data integrity (Always verify with server)
+  // Initial Hydration - Restore for mobile resilience
   useEffect(() => {
     const hydrate = async () => {
       try {
-        // We no longer hydrate from localStorage to ensure server-side truth on startup
-        // as requested for mobile devices (Android/iOS)
-        console.log("[PlantContext] Initializing... Waiting for server sync.");
+        const savedPlants = localStorage.getItem('verdant_plants_v8');
+        const savedHouses = localStorage.getItem('verdant_houses_v8');
+        const savedTasks = localStorage.getItem('verdant_tasks_v8');
+        const savedRooms = localStorage.getItem('verdant_custom_rooms');
+        
+        if (savedPlants) setPlants(JSON.parse(savedPlants));
+        if (savedHouses) setHouses(JSON.parse(savedHouses));
+        if (savedTasks) setTasks(JSON.parse(savedTasks));
+        if (savedRooms) setCustomRooms(JSON.parse(savedRooms));
+        
+        console.info("[PlantContext] Local archives hydrated.");
+      } catch (e) {
+        console.warn("Hydration error:", e);
       } finally { 
         setIsPersistenceReady(true); 
-        // isLoading remains true until first successful refreshAllData
+        // If there's no token, we can unfreeze immediately
+        if (!token) setIsLoading(false);
       }
     };
     hydrate();
-  }, []);
+  }, [token]);
 
   // Sync whenever token or refreshAllData changes
   useEffect(() => {

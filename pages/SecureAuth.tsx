@@ -126,6 +126,8 @@ export const SecureAuth: React.FC = () => {
       const isEnvAvailable = (window as any)._ENV_ !== undefined;
       setEnvLoaded(isEnvAvailable);
 
+      if (!isEnvAvailable) return false;
+
       if (clientId === 'MISSING_CLIENT_ID' || !clientId) {
         setConfigMissing(true);
         return false;
@@ -141,10 +143,10 @@ export const SecureAuth: React.FC = () => {
       let attempts = 0;
       const interval = setInterval(() => {
         attempts++;
-        if (checkConfig() || attempts > 20) {
+        if (checkConfig() || attempts > 30) {
           clearInterval(interval);
         }
-      }, 500);
+      }, 300);
       return () => clearInterval(interval);
     }
   }, []);

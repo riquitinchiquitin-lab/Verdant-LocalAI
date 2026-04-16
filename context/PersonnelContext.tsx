@@ -37,22 +37,25 @@ export const PersonnelProvider: React.FC<{ children: ReactNode }> = ({ children 
         const remoteUsers = await res.json();
         if (Array.isArray(remoteUsers)) {
           setUsers(remoteUsers);
-          setIsLoading(false); // First sync complete, data is verified
         }
       }
     } catch (e) {
       console.warn("Personnel Sync: Proxmox Node restricted.");
+    } finally {
+      setIsLoading(false);
     }
   }, [token, user]);
 
-  // Initial Hydration - DISABLED for mobile data integrity (Always verify with server)
+  // Initial Hydration - Restore for mobile resilience
   useEffect(() => {
     const hydrate = async () => {
-      // We no longer hydrate from localStorage as requested for mobile devices (Android/iOS)
+      try {
+        const saved = localStorage.getItem('verdant_personnel_v8');
+        if (saved) setUsers(JSON.parse(saved));
+      } catch (e) {}
       setIsPersistenceReady(true);
-      // isLoading remains true until first successful refreshPersonnelData
-      
-      if (token) await refreshPersonnelData();
+      if (!token) setIsLoading(false);
+      else await refreshPersonnelData();
     };
     hydrate();
   }, [token, refreshPersonnelData]);

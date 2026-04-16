@@ -330,7 +330,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 app.post('/api/system/track-usage', checkAuth, async (req, res) => {
   const { type, tokens } = req.body;
-  const validTypes = ['gemini', 'plantnet', 'trefle', 'perenual', 'serper', 'opb'];
+  const validTypes = ['gemini', 'plantnet', 'trefle', 'perenual', 'serper', 'opb', 'local_ai'];
   if (!validTypes.includes(type)) return res.status(400).json({ error: "INVALID_TYPE" });
 
   const now = new Date();
@@ -341,14 +341,15 @@ app.post('/api/system/track-usage', checkAuth, async (req, res) => {
     const result = await query('SELECT * FROM api_usage WHERE id = ?', [monthId]);
     if (result.rows.length === 0) {
       // Initialize all columns to 0
-      await query(`INSERT INTO api_usage (id, gemini_count, gemini_tokens, plantnet_count, trefle_count, perenual_count, serper_count, opb_count, last_updated) VALUES (?, 0, 0, 0, 0, 0, 0, 0, ?)`, [monthId, now.toISOString()]);
+      await query(`INSERT INTO api_usage (id, gemini_count, gemini_tokens, plantnet_count, trefle_count, perenual_count, serper_count, opb_count, local_ai_count, local_ai_tokens, last_updated) VALUES (?, 0, 0, 0, 0, 0, 0, 0, 0, 0, ?)`, [monthId, now.toISOString()]);
     }
     
     let updateSql = `UPDATE api_usage SET ${column} = ${column} + 1, last_updated = ?`;
     let params = [now.toISOString(), monthId];
     
-    if (type === 'gemini' && typeof tokens === 'number') {
-      updateSql = `UPDATE api_usage SET ${column} = ${column} + 1, gemini_tokens = gemini_tokens + ?, last_updated = ? WHERE id = ?`;
+    if ((type === 'gemini' || type === 'local_ai') && typeof tokens === 'number') {
+      const tokenCol = `${type}_tokens`;
+      updateSql = `UPDATE api_usage SET ${column} = ${column} + 1, ${tokenCol} = ${tokenCol} + ?, last_updated = ? WHERE id = ?`;
       params = [tokens, now.toISOString(), monthId];
     } else {
       updateSql = `UPDATE api_usage SET ${column} = ${column} + 1, last_updated = ? WHERE id = ?`;
@@ -460,11 +461,14 @@ app.get('/api/system/usage', checkAuth, async (req, res) => {
     const usageData = result.rows[0] || { 
       id: monthId, 
       gemini_count: 0, 
+      gemini_tokens: 0,
       plantnet_count: 0, 
       trefle_count: 0, 
       perenual_count: 0,
       serper_count: 0,
-      opb_count: 0
+      opb_count: 0,
+      local_ai_count: 0,
+      local_ai_tokens: 0
     };
 
     res.json({
@@ -867,6 +871,8 @@ async function initializeDatabase() {
       perenual_count INTEGER DEFAULT 0,
       serper_count INTEGER DEFAULT 0,
       opb_count INTEGER DEFAULT 0,
+      local_ai_count INTEGER DEFAULT 0,
+      local_ai_tokens INTEGER DEFAULT 0,
       last_updated TEXT
     )`
   ];
@@ -879,6 +885,8 @@ async function initializeDatabase() {
   try { await query(`ALTER TABLE users ADD COLUMN caretakerStart TEXT`); } catch(e) {}
   try { await query(`ALTER TABLE users ADD COLUMN caretakerEnd TEXT`); } catch(e) {}
   try { await query(`ALTER TABLE api_usage ADD COLUMN gemini_tokens INTEGER DEFAULT 0`); } catch(e) {}
+  try { await query(`ALTER TABLE api_usage ADD COLUMN local_ai_count INTEGER DEFAULT 0`); } catch(e) {}
+  try { await query(`ALTER TABLE api_usage ADD COLUMN local_ai_tokens INTEGER DEFAULT 0`); } catch(e) {}
 
   console.log('[DB] Schema Synchronized');
 }

@@ -161,35 +161,74 @@ export const generatePlantDetails = async (
     searchGroundingData(`how to propagate and repot ${scientificName} successfully`).catch(() => null)
   ]);
 
-  if (isLocalEnabled && typeof window !== 'undefined' && 'ai' in window) {
-    onLog?.("msg_harmonizing_data", "LOCAL_AI");
-    try {
-      const rawData = { trefle, opb, perenual, grounding };
-      const localHarmonized = await harmonizePlantDataLocal(scientificName, rawData);
-      if (localHarmonized) {
-        // Now translate the key fields locally
-        const fieldsToTranslate = ['description', 'aiInsight'];
-        const translations: Record<string, LocalizedString> = {};
-        
-        for (const field of fieldsToTranslate) {
-          if (localHarmonized[field]) {
-            const localTrans = await translateTextLocal(localHarmonized[field], TARGET_LANGS);
-            translations[field] = localTrans as LocalizedString;
-          }
-        }
-
-        return createPlant({
-          ...localHarmonized,
-          description: translations.description,
-          aiInsight: translations.aiInsight,
-          trefleId: trefle?.id,
-          opbId: opb?.pid,
-          images: base64Image ? [base64Image] : []
-        });
-      }
-    } catch (e) {
-      console.warn("Local harmonization failed, falling back to Cloud:", e);
+  // Strip down raw data to save tokens
+  const strippedTrefle = trefle ? {
+    id: trefle.id,
+    scientific_name: trefle.scientific_name,
+    common_name: trefle.common_name,
+    family: trefle.family?.name,
+    main_species: {
+        duration: trefle.main_species?.duration,
+        edible: trefle.main_species?.edible,
+        specifications: trefle.main_species?.specifications
     }
+  } : null;
+
+  const strippedOpb = opb ? {
+      pid: opb.pid,
+      description: opb.description,
+      display_pid: opb.display_pid,
+      common_names: opb.common_names
+  } : null;
+
+  const strippedPerenual = perenual ? {
+      id: perenual.id,
+      common_name: perenual.common_name,
+      scientific_name: perenual.scientific_name,
+      cycle: perenual.cycle,
+      watering: perenual.watering,
+      sunlight: perenual.sunlight
+  } : null;
+
+  if (isLocalEnabled && typeof window !== 'undefined' && 'ai' in window) {
+    const aiAvailable = (window as any).ai?.canCreateTextSession ? await (window as any).ai.canCreateTextSession() : 'no';
+    
+    if (aiAvailable !== 'no') {
+      onLog?.("msg_harmonizing_data", "LOCAL_AI");
+      try {
+        const rawData = { trefle: strippedTrefle, opb: strippedOpb, perenual: strippedPerenual, grounding };
+        const localHarmonized = await harmonizePlantDataLocal(scientificName, rawData);
+        if (localHarmonized) {
+          console.info(`[SYSTEM] Local Harmonization successful for ${scientificName}`);
+          // Now translate the key fields locally
+          const fieldsToTranslate = ['description', 'aiInsight'];
+          const translations: Record<string, LocalizedString> = {};
+          
+          for (const field of fieldsToTranslate) {
+            if (localHarmonized[field]) {
+              const localTrans = await translateTextLocal(localHarmonized[field], TARGET_LANGS);
+              translations[field] = localTrans as LocalizedString;
+            }
+          }
+
+          return createPlant({
+            ...localHarmonized,
+            description: translations.description,
+            aiInsight: translations.aiInsight,
+            trefleId: trefle?.id,
+            opbId: opb?.pid,
+            images: base64Image ? [base64Image] : []
+          });
+        }
+      } catch (e) {
+        console.warn("[SYSTEM] Local harmonization failed, falling back to Cloud:", e);
+        onLog?.(`Local AI Fault: ${e instanceof Error ? e.message : 'Unknown'}`, "DEBUG");
+      }
+    } else {
+        console.warn("[SYSTEM] window.ai exists but session cannot be created. Status:", aiAvailable);
+    }
+  } else if (isLocalEnabled) {
+      console.warn("[SYSTEM] Local AI enabled but 'window.ai' not found in browser context. Falling back to Gemini Cloud.");
   }
 
   const ai = new GoogleGenAI({ apiKey: key });
@@ -212,9 +251,9 @@ export const generatePlantDetails = async (
   const prompt = `
     Harmonize biological data for "${scientificName}".
     SOURCES: 
-    - Trefle: ${JSON.stringify(trefle)}
-    - OPB: ${JSON.stringify(opb)}
-    - Perenual: ${JSON.stringify(perenual)}
+    - Trefle: ${JSON.stringify(strippedTrefle)}
+    - OPB: ${JSON.stringify(strippedOpb)}
+    - Perenual: ${JSON.stringify(strippedPerenual)}
     - Web Grounding: ${JSON.stringify(limitedGrounding)}
     
     REQUIREMENTS:

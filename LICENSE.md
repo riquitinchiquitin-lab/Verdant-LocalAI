@@ -30,7 +30,8 @@ The Verdant Botanical Protocol utilizes several high-performance third-party ser
 
 | Service | Purpose | Provider |
 | :--- | :--- | :--- |
-| **Google Gemini** | Primary AI Reasoning & Vision | Google Cloud |
+| **Google Gemini** | Cloud AI Reasoning & Vision | Google Cloud |
+| **On-Device AI** | Local Data Synthesis & Translation | native (Silicon) |
 | **PlantNet API** | Botanical Identification | Pl@ntNet |
 | **Trefle API** | Botanical Database & Taxonomy | Trefle.io |
 | **OpenPlantBook** | Community Botanical Data | OpenPlantBook |

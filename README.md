@@ -14,9 +14,10 @@ Verdant is a high-precision botanical management system designed for professiona
 - **Hydration Monitoring**: Real-time tracking of hydration levels with visual progress bars and "Thirsty" status alerts.
 - **Maintenance Logs**: Log every action (watering, moisture checks, phenophase changes) with automated multi-language note generation.
 
-### 3. AI-Powered Botanical Intelligence
-- **Gemini Integration**: Leverages Google Gemini AI to provide expert advice on lighting, nutrition, and temperature requirements.
-- **Automated Identification**: Sync specimen data and generate detailed care instructions using AI-driven botanical analysis.
+### 3. Hybrid AI Architecture
+- **Cloud Intelligence (Gemini)**: Leverages Google Gemini Cloud for expert pruning advice and complex vision analysis.
+- **Local On-Device AI**: Utilizes **Gemini Nano** or **WebGPU** for instant, private data synthesis, translation, and health diagnosis. No cloud tokens required for daily logic.
+- **Automated Identification**: Sync specimen data using Pl@ntNet vision, then refine and harmonize the record using the local high-performance model.
 
 ### 4. Multi-Property Infrastructure
 - **Property Isolation**: Manage multiple houses or properties within a single interface.
@@ -30,7 +31,7 @@ Verdant is a high-precision botanical management system designed for professiona
 - **Inventory Management**: Track botanical supplies, fertilizers, and equipment across all locations.
 - **QR/Barcode Synchronization**: Quickly sync and identify specimens using integrated QR scanning.
 - **Data Export**: Export specimen data to Niimbot-compatible Excel formats for professional label printing.
-- **System Telemetry**: Monitor system health and botanical data distribution through integrated telemetry dashboards.
+- **System Telemetry**: Monitor system health, API distribution, and **Local AI throughput** through integrated telemetry dashboards.
 
 ### 6. Security & Reliability
 - **Military-Grade Encryption**: All data payloads are secured using AES-256-GCM encryption. See the **[Security Protocol (SECURITY.md)](./SECURITY.md)** for more details.
@@ -40,6 +41,7 @@ Verdant is a high-precision botanical management system designed for professiona
 ### 7. Global Accessibility
 - **11-Language Support**: Fully localized in English, Chinese, Japanese, Korean, Spanish, French, Portuguese, German, Indonesian, Vietnamese, and Tagalog.
 - **Progressive Web App (PWA)**: Installable on mobile and desktop devices for offline access and real-time notifications.
+- **Hardware Acceleration**: High-performance local AI operations optimized for **Pixel 9 Pro (Tensor G4)** and **iPhone 16 Pro (A18 Pro)** families.
 
 ## 🚀 Getting Started
 For detailed installation instructions, including prerequisites and API key setup, please refer to the **[Installation Guide (INSTALL.md)](./INSTALL.md)**.
@@ -52,7 +54,7 @@ This project is licensed under the **Creative Commons Attribution-NonCommercial 
 
 ### Credits & Acknowledgments
 Verdant is made possible through the integration of several powerful botanical and AI technologies:
-- **AI Engine**: Built with **Google Gemini Studio**.
+- **AI Engine**: Hybrid Cloud/Local architecture built with **Google Gemini Studio** and on-device **WebGPU/Prompt API**.
 - **Botanical Data**: Powered by open-source APIs from **PlantNet**, **Trefle**, and **OpenPlantBook**.
 - **Search Intelligence**: Grounding and discovery provided by **Serper**.
 

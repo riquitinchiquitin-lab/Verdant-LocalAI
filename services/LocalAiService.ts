@@ -12,24 +12,35 @@ export interface LocalAiCapabilities {
 }
 
 export const checkLocalAiSupport = async (): Promise<LocalAiCapabilities> => {
-  // 1. Check for window.ai (Chrome Prompt API / Gemini Nano)
-  if (typeof window !== 'undefined' && 'ai' in window && (window as any).ai.canCreateTextSession) {
+  // 1. Check for window.ai with robust existence check
+  if (typeof window !== 'undefined' && 'ai' in window) {
     try {
-      const canCreate = await (window as any).ai.canCreateTextSession();
-      if (canCreate !== 'no') {
-        return { isSupported: true, origin: 'WINDOW_AI' };
+      const ai = (window as any).ai;
+      if (ai && typeof ai.canCreateTextSession === 'function') {
+        const canCreate = await ai.canCreateTextSession();
+        if (canCreate === 'readily' || canCreate === 'after-download') {
+          return { isSupported: true, origin: 'WINDOW_AI' };
+        }
       }
     } catch (e) {
-      console.warn("Local AI (window.ai) detected but failed check:", e);
+      console.warn("Verdant AI Probe Fault:", e);
     }
   }
 
-  // 2. Check for WebGPU (Future support for WebLLM/Llama3)
-  if (typeof navigator !== 'undefined' && 'gpu' in navigator) {
-    return { isSupported: true, origin: 'WEBGPU' };
+  // 2. Check for WebGPU (Detected but and optimized for A18 Pro, but requires runtime driver)
+  if (typeof navigator !== 'undefined' && 'gpu' in navigator && (navigator as any).gpu) {
+    // We mark it as NOT supported for execution yet to avoid misleading the user
+    // although the hardware IS capable.
+    return { isSupported: false, origin: 'WEBGPU' };
   }
 
   return { isSupported: false, origin: 'NONE' };
+};
+
+const estimateTokens = (text: string): number => {
+  if (!text) return 0;
+  // Standard heuristic: 1 token ~= 4 characters for English
+  return Math.ceil(text.length / 4);
 };
 
 export const runLocalAiPrompt = async (prompt: string, systemPrompt?: string): Promise<string> => {
@@ -40,6 +51,11 @@ export const runLocalAiPrompt = async (prompt: string, systemPrompt?: string): P
         systemPrompt: systemPrompt || "You are a botanical expert assistant."
       });
       const result = await session.prompt(prompt);
+      
+      // Track usage with token estimation
+      const totalTokens = estimateTokens(prompt) + estimateTokens(result) + estimateTokens(systemPrompt || "");
+      trackUsage('local_ai', totalTokens);
+      
       session.destroy();
       return result;
     } catch (e) {
@@ -61,7 +77,10 @@ export const translateTextLocal = async (text: string, targetLangs: string[]): P
 
   try {
     const response = await session.prompt(text);
-    trackUsage('local_ai');
+    // Estimate tokens: prompt (~input text) + result
+    const tokens = estimateTokens(text) + estimateTokens(response);
+    trackUsage('local_ai', tokens);
+    
     // Attempt to parse JSON from the response
     const jsonMatch = response.match(/\{.*\}/s);
     if (jsonMatch) {
@@ -89,7 +108,10 @@ export const diagnosePlantHealthLocal = async (plantName: string, observations: 
   try {
     const prompt = `PLANT: ${plantName}\nOBSERVATIONS: ${observations}\n\nProvide a concise diagnosis and 3-5 clear recovery steps.`;
     const response = await session.prompt(prompt);
-    trackUsage('local_ai');
+    
+    const tokens = estimateTokens(prompt) + estimateTokens(response);
+    trackUsage('local_ai', tokens);
+    
     return response;
   } finally {
     session.destroy();
@@ -121,9 +143,17 @@ export const harmonizePlantDataLocal = async (scientificName: string, rawData: a
       Return as JSON.
     `;
     const response = await session.prompt(prompt);
-    trackUsage('local_ai');
-    const jsonMatch = response.match(/\{.*\}/s);
-    return jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+    
+    const tokens = estimateTokens(prompt) + estimateTokens(response);
+    trackUsage('local_ai', tokens);
+    
+    // More robust JSON extraction for smaller models
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+       console.warn("[LOCAL_AI] No JSON found in response:", response);
+       return null;
+    }
+    return JSON.parse(jsonMatch[0]);
   } finally {
     session.destroy();
   }
