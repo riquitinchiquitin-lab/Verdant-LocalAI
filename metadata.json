@@ -1,0 +1,7 @@
+{
+  "name": "Remix: Verdant",
+  "description": "Multilingual plant care management system.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
