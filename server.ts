@@ -334,23 +334,24 @@ app.post('/api/system/track-usage', checkAuth, async (req, res) => {
   if (!validTypes.includes(type)) return res.status(400).json({ error: "INVALID_TYPE" });
 
   const now = new Date();
-  const monthId = `${now.getFullYear()}-${now.getMonth() + 1}`;
+  // Align with Google Gemini API reset (Midnight PT)
+  const usageId = now.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
   const column = `${type}_count`;
   
   try {
-    const result = await query('SELECT * FROM api_usage WHERE id = ?', [monthId]);
+    const result = await query('SELECT * FROM api_usage WHERE id = ?', [usageId]);
     if (result.rows.length === 0) {
       // Initialize all columns to 0
-      await query(`INSERT INTO api_usage (id, gemini_count, gemini_tokens, plantnet_count, trefle_count, perenual_count, serper_count, opb_count, local_ai_count, local_ai_tokens, last_updated) VALUES (?, 0, 0, 0, 0, 0, 0, 0, 0, 0, ?)`, [monthId, now.toISOString()]);
+      await query(`INSERT INTO api_usage (id, gemini_count, gemini_tokens, plantnet_count, trefle_count, perenual_count, serper_count, opb_count, local_ai_count, local_ai_tokens, last_updated) VALUES (?, 0, 0, 0, 0, 0, 0, 0, 0, 0, ?)`, [usageId, now.toISOString()]);
     }
     
     let updateSql = `UPDATE api_usage SET ${column} = ${column} + 1, last_updated = ?`;
-    let params = [now.toISOString(), monthId];
+    let params: any[] = [now.toISOString(), usageId];
     
     if ((type === 'gemini' || type === 'local_ai') && typeof tokens === 'number') {
       const tokenCol = `${type}_tokens`;
       updateSql = `UPDATE api_usage SET ${column} = ${column} + 1, ${tokenCol} = ${tokenCol} + ?, last_updated = ? WHERE id = ?`;
-      params = [tokens, now.toISOString(), monthId];
+      params = [tokens, now.toISOString(), usageId];
     } else {
       updateSql = `UPDATE api_usage SET ${column} = ${column} + 1, last_updated = ? WHERE id = ?`;
     }
@@ -441,7 +442,8 @@ app.get('/api/proxy/perenual', checkAuth, async (req, res) => {
 app.get('/api/system/usage', checkAuth, async (req, res) => {
   console.log(`[API] Fetching usage for user: ${(req as any).userId}`);
   const now = new Date();
-  const monthId = `${now.getFullYear()}-${now.getMonth() + 1}`;
+  // Align with Google Gemini API reset (Midnight PT)
+  const usageId = now.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
   
   // Calculate CPU Load (1 min average as percentage of total cores)
   const cpus = os.cpus();
@@ -455,11 +457,11 @@ app.get('/api/system/usage', checkAuth, async (req, res) => {
   const cpuUsageStr = cpuUsage.toFixed(1);
 
   try {
-    const result = await query('SELECT * FROM api_usage WHERE id = ?', [monthId]);
+    const result = await query('SELECT * FROM api_usage WHERE id = ?', [usageId]);
     const logsResult = await query('SELECT * FROM system_logs ORDER BY created_at DESC LIMIT 5');
     
     const usageData = result.rows[0] || { 
-      id: monthId, 
+      id: usageId, 
       gemini_count: 0, 
       gemini_tokens: 0,
       plantnet_count: 0, 

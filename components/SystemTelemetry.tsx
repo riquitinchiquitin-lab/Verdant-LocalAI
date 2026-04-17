@@ -23,13 +23,13 @@ interface ApiUsage {
 }
 
 const API_LIMITS: Record<string, number> = {
-    gemini: 5000,
+    gemini: 1500,        // Gemini 1.5 Flash Daily Limit
     gemini_tokens: 1000000,
-    plantnet: 500,
-    trefle: 2500,
-    perenual: 1000,
-    serper: 1000,
-    opb: 1000
+    plantnet: 500,       // PlantNet Daily Limit
+    trefle: 250,
+    perenual: 100,
+    serper: 100,
+    opb: 100
 };
 
 export const SystemTelemetry: React.FC = () => {
@@ -168,7 +168,7 @@ export const SystemTelemetry: React.FC = () => {
                     </div>
                     <div className="flex items-baseline gap-1">
                         <span className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{stats.apiUsage}</span>
-                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest ml-1">HITS</span>
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest ml-1">DAILY HITS</span>
                     </div>
                     {apiUsage && apiUsage.gemini_tokens > 0 && (
                         <div className="flex items-center gap-1 mt-1">
