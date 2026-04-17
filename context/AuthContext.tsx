@@ -3,6 +3,8 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { User, AuthState, House } from '../types';
 import { API_URL } from '../constants';
 
+import { storage } from '../services/storage';
+
 interface AuthContextType extends AuthState {
   login: (token: string, user: User) => Promise<void>;
   logout: () => void;
@@ -23,7 +25,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setState(prev => {
       if (!prev.user) return prev;
       const updatedUser = { ...prev.user, ...updates };
-      localStorage.setItem('verdant_user', JSON.stringify(updatedUser));
+      storage.set('verdant_user', JSON.stringify(updatedUser));
       return { ...prev, user: updatedUser };
     });
   }, []);
@@ -48,15 +50,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }
       }).then(res => res.ok ? res.json() : null)
         .then(config => {
-            if (config?.masterKey && config.masterKey !== localStorage.getItem('verdant_master_key')) {
-                localStorage.setItem('verdant_master_key', config.masterKey);
+            if (config?.masterKey && config.masterKey !== storage.get('verdant_master_key')) {
+                storage.set('verdant_master_key', config.masterKey);
             }
         }).catch(() => {});
       return;
     }
 
-    const storedToken = localStorage.getItem('verdant_token');
-    const storedUser = localStorage.getItem('verdant_user');
+    const storedToken = storage.get('verdant_token');
+    const storedUser = storage.get('verdant_user');
 
     if (storedToken && storedUser) {
       try {
@@ -76,8 +78,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 }
             }).then(res => res.ok ? res.json() : null)
               .then(config => {
-                  if (config?.masterKey && config.masterKey !== localStorage.getItem('verdant_master_key')) {
-                      localStorage.setItem('verdant_master_key', config.masterKey);
+                  if (config?.masterKey && config.masterKey !== storage.get('verdant_master_key')) {
+                      storage.set('verdant_master_key', config.masterKey);
                   }
               }).catch(() => {});
         }
@@ -93,8 +95,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // SECURITY: Scrub AI key before storage
     const userToStore = { ...user, personalAiKey: undefined }; 
     
-    localStorage.setItem('verdant_token', token);
-    localStorage.setItem('verdant_user', JSON.stringify(userToStore));
+    storage.set('verdant_token', token);
+    storage.set('verdant_user', JSON.stringify(userToStore));
     
     // Update state immediately so ProtectedRoute allows entry
     setState({ token, user, loading: false });
@@ -109,7 +111,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }).then(res => res.ok ? res.json() : null)
           .then(config => {
               if (config?.masterKey) {
-                  localStorage.setItem('verdant_master_key', config.masterKey);
+                  storage.set('verdant_master_key', config.masterKey);
               }
           }).catch(() => {
               console.warn("System Handshake Failure: Master Key could not be re-synchronized.");
@@ -118,9 +120,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem('verdant_token');
-    localStorage.removeItem('verdant_user');
-    localStorage.removeItem('verdant_master_key');
+    storage.remove('verdant_token');
+    storage.remove('verdant_user');
+    storage.remove('verdant_master_key');
     setState({ token: null, user: null, loading: false });
   }, []);
 

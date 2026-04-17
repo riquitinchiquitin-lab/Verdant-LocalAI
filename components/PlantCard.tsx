@@ -182,9 +182,14 @@ export const PlantCard: React.FC<PlantCardProps> = ({ plant, className = '', sho
                 </div>
 
                 {/* Hardware Decoration: Serial Number */}
-                <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2 opacity-40">
-                    <div className="w-1 h-1 rounded-full bg-white animate-pulse" />
-                    <span className="text-[7px] font-mono text-white uppercase tracking-[0.2em]">{t('lbl_serial_number')}: {plant.id?.substring(0, 8)}</span>
+                <div className="absolute bottom-3 left-3 z-10 flex flex-col gap-0.5 opacity-60">
+                    <div className="flex items-center gap-2">
+                        <div className={`w-1 h-1 rounded-full ${status.percent > 20 ? 'bg-emerald-400' : 'bg-rose-400'} animate-pulse`} />
+                        <span className="text-[7px] font-mono text-white uppercase tracking-[0.2em]">{t('lbl_serial_number')}: {plant.id?.substring(0, 8)}</span>
+                    </div>
+                    {plant.houseId && (
+                        <span className="text-[6px] font-black text-white/50 uppercase tracking-[0.3em] font-mono ml-3">LOC_UNIT: {plant.houseId.substring(0, 4)}</span>
+                    )}
                 </div>
 
                 {/* Hardware Decoration: Dot Grid */}
@@ -206,18 +211,23 @@ export const PlantCard: React.FC<PlantCardProps> = ({ plant, className = '', sho
                     </p>
                 </div>
 
-                <div className="space-y-1.5">
-                    <div className="flex justify-between items-end">
-                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('lbl_hydration')}</span>
-                        <span className={`text-[8px] font-black tracking-widest ${status.daysLeft === 0 ? 'text-red-500' : status.daysLeft === '?' ? 'text-gray-400' : 'text-verdant'}`}>
-                            {status.daysLeft === 0 ? t('status_due_now') : status.daysLeft === '?' ? '?' : `${status.daysLeft}D`}
+                <div className="space-y-1.5 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-gray-100 dark:border-white/5">
+                    <div className="flex justify-between items-end mb-1">
+                        <div className="flex items-center gap-2">
+                            <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none">VITALITY_CORE</span>
+                            <div className={`w-1 h-1 rounded-full ${status.percent > 50 ? 'bg-emerald-500' : status.percent > 20 ? 'bg-amber-500' : 'bg-red-500'}`} />
+                        </div>
+                        <span className={`text-[9px] font-mono font-black tracking-widest ${status.daysLeft === 0 ? 'text-red-500' : status.daysLeft === '?' ? 'text-gray-400' : 'text-verdant'}`}>
+                            {status.daysLeft === 0 ? t('status_due_now') : status.daysLeft === '?' ? 'N/A' : `+${status.daysLeft}D`}
                         </span>
                     </div>
-                    <div className="h-1 w-full bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                        <div 
-                            className={`h-full rounded-full transition-all duration-1000 ${status.daysLeft === 0 ? 'bg-red-500 animate-pulse' : 'bg-verdant'}`} 
-                            style={{ width: `${status.percent}%` }} 
-                        />
+                    <div className="h-2 w-full bg-gray-200 dark:bg-slate-700 rounded-sm overflow-hidden flex gap-0.5 p-[1px]">
+                        {[...Array(10)].map((_, i) => (
+                          <div 
+                            key={i}
+                            className={`h-full flex-1 transition-all duration-700 ${i * 10 < status.percent ? (status.daysLeft === 0 ? 'bg-red-500' : 'bg-verdant') : 'bg-gray-100 dark:bg-slate-800'}`}
+                          />
+                        ))}
                     </div>
                 </div>
 

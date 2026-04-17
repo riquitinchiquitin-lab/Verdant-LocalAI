@@ -11,44 +11,57 @@ import { QrScannerModal } from './QrScannerModal';
 import { generatePlantDetails } from '../services/plantAi';
 import { generateUUID } from '../services/crypto';
 import { Button } from './ui/Button';
-import { QrCode } from 'lucide-react';
+import { QrCode, Shield, Server, Activity, ArrowRight, Menu, LogOut, Search, Plus, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { nativeFeedback, setupNativeUI } from '../services/nativeService';
 
 const NotificationToast: React.FC = () => {
   const { notification, clearNotification } = useSystem();
-  if (!notification) return null;
-
-  const typeStyles = {
-    SUCCESS: 'bg-emerald-500 text-white',
-    ERROR: 'bg-red-500 text-white',
-    WARNING: 'bg-amber-500 text-white',
-    INFO: 'bg-blue-600 text-white'
-  };
-
-  const icons = {
-    SUCCESS: '✓',
-    ERROR: '✕',
-    WARNING: '⚠',
-    INFO: 'ℹ'
-  };
+  
+  useEffect(() => {
+    if (notification) {
+      nativeFeedback.notification(notification.type === 'INFO' ? 'SUCCESS' : notification.type as any);
+    }
+  }, [notification]);
 
   return (
-    <div className="fixed top-[calc(1rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-[1000] animate-in slide-in-from-top-4 duration-500">
-      <div className={`${typeStyles[notification.type]} px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 backdrop-blur-md bg-opacity-90 border border-white/20`}>
-        <span className="font-black text-sm">{icons[notification.type]}</span>
-        <p className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap">{notification.message}</p>
-        <button onClick={clearNotification} className="ml-2 opacity-50 hover:opacity-100 font-bold border border-white/20 rounded-full w-6 h-6 flex items-center justify-center">✕</button>
-      </div>
-    </div>
+    <AnimatePresence>
+      {notification && (
+        <motion.div 
+          initial={{ y: -100, x: '-50%', opacity: 0 }}
+          animate={{ y: 0, x: '-50%', opacity: 1 }}
+          exit={{ y: -100, x: '-50%', opacity: 0 }}
+          className="fixed top-6 left-1/2 z-[1000] w-auto"
+        >
+          <div className={`px-6 py-3 rounded-full shadow-2xl flex items-center gap-4 backdrop-blur-xl border border-white/20 dark:border-white/5 ${
+            notification.type === 'SUCCESS' ? 'bg-emerald-500/90' :
+            notification.type === 'ERROR' ? 'bg-rose-500/90' :
+            notification.type === 'WARNING' ? 'bg-amber-500/90' :
+            'bg-blue-600/90'
+          } text-white`}>
+            <span className="text-sm font-black tracking-tighter">
+              {notification.type === 'SUCCESS' ? '✓' : notification.type === 'ERROR' ? '✕' : notification.type === 'WARNING' ? '!' : 'i'}
+            </span>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap">{notification.message}</p>
+            <button 
+              onClick={clearNotification} 
+              className="w-5 h-5 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20 transition-colors"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 
 const QuotaBar: React.FC = () => {
-  const { rpm, limit, status } = useSystem();
+  const { rpm, limit, status, isLocalAiSupported, isLocalAiEnabled, setLocalAiEnabled, localAiOrigin, localAiProgress, isLocalAiLoading } = useSystem();
   const { isSynced } = usePlants();
   const { t } = useLanguage();
   
   const percentage = Math.min(100, (rpm / limit) * 100);
-  const { isLocalAiSupported, isLocalAiEnabled, setLocalAiEnabled, localAiOrigin } = useSystem();
   
   const barColor = 
     status === 'COOLDOWN' ? 'bg-red-500' : 
@@ -63,19 +76,40 @@ const QuotaBar: React.FC = () => {
   return (
     <div className="px-6 py-4 border-t border-gray-100 dark:border-slate-800 space-y-4">
       {isLocalAiSupported && (
-        <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-gray-100 dark:border-slate-800">
-          <div className="flex flex-col">
-            <span className="text-[9px] font-black text-slate-900 dark:text-white uppercase tracking-widest">{t('sys_local_ai')}</span>
-            <span className="text-[7px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tighter">
-              {localAiOrigin === 'WINDOW_AI' ? 'Gemini Nano (Pixel/Chrome)' : 'WebGPU Accelerated'}
-            </span>
+        <div className="flex flex-col gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-gray-100 dark:border-slate-800">
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col">
+              <span className="text-[9px] font-black text-slate-900 dark:text-white uppercase tracking-widest">{t('sys_local_ai')}</span>
+              <span className="text-[7px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tighter">
+                {localAiOrigin === 'WINDOW_AI' ? 'Gemini Nano (Pixel/Chrome)' : 'WebGPU Accelerated (Llama-3)'}
+              </span>
+            </div>
+            <button 
+              onClick={() => setLocalAiEnabled(!isLocalAiEnabled)}
+              disabled={isLocalAiLoading}
+              className={`w-10 h-5 rounded-full transition-all relative ${isLocalAiEnabled ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-slate-700'} ${isLocalAiLoading ? 'opacity-50 cursor-wait' : ''}`}
+            >
+              <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${isLocalAiEnabled ? 'left-6' : 'left-1'}`} />
+            </button>
           </div>
-          <button 
-            onClick={() => setLocalAiEnabled(!isLocalAiEnabled)}
-            className={`w-10 h-5 rounded-full transition-all relative ${isLocalAiEnabled ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-slate-700'}`}
-          >
-            <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${isLocalAiEnabled ? 'left-6' : 'left-1'}`} />
-          </button>
+          
+          {isLocalAiLoading && (
+            <div className="space-y-1.5 animate-in fade-in duration-500">
+              <div className="flex justify-between items-center text-[7px] font-black text-slate-400 uppercase tracking-widest">
+                <span>Syncing Model...</span>
+                <span>{Math.round(localAiProgress * 100)}%</span>
+              </div>
+              <div className="h-1 w-full bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-verdant transition-all duration-300" 
+                  style={{ width: `${localAiProgress * 100}%` }} 
+                />
+              </div>
+              <p className="text-[6px] font-bold text-slate-400 dark:text-slate-500 uppercase leading-none opacity-60">
+                Model cached in persistent storage for offline edge compute.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -97,11 +131,11 @@ const QuotaBar: React.FC = () => {
       <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
               <div className={`w-1.5 h-1.5 rounded-full ${isSynced ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse' : 'bg-gray-300'}`}></div>
-              <span className="text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('sys_db_link')}</span>
+              <span className="text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest font-mono">
+                {isSynced ? 'VERDANT_CORE_UP' : 'LOCAL_SHADOW_LINK'}
+              </span>
           </div>
-          <span className="text-[7px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">
-            {isSynced ? t('sys_proxmox_online') : t('sys_local_cache')}
-          </span>
+          <Activity className="w-2.5 h-2.5 text-slate-300 dark:text-slate-700" />
       </div>
     </div>
   );
@@ -120,6 +154,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  useEffect(() => {
+    setupNativeUI();
+  }, []);
 
   const handleScanSuccess = async (data: string) => {
     setIsScannerOpen(false);
@@ -233,16 +271,24 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               key={item.to}
               to={item.to}
               onClick={() => setIsSidebarOpen(false)}
-              className={`flex items-center gap-4 px-3 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.1em] transition-all group ${
+              className={`flex items-center gap-4 px-3 py-3 rounded-[24px] text-[10px] font-black uppercase tracking-[0.1em] transition-all relative overflow-hidden group ${
                 location.pathname === item.to 
-                  ? 'bg-verdant/10 text-verdant' 
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800'
+                  ? 'bg-verdant text-white shadow-lg shadow-verdant/20' 
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-900'
               }`}
             >
-              <div className={`w-10 h-10 shrink-0 clay-icon ${location.pathname === item.to ? 'scale-110' : ''}`}>
+              {location.pathname === item.to && (
+                <motion.div 
+                  layoutId="activeNav"
+                  className="absolute inset-0 bg-gradient-to-r from-verdant to-emerald-600 opacity-100 z-0"
+                  transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                />
+              )}
+              <div className={`w-10 h-10 shrink-0 clay-icon z-10 ${location.pathname === item.to ? 'bg-white/20 text-white' : ''}`}>
                 <span className="text-xl">{item.icon}</span>
               </div>
-              <span className="flex-1">{item.label}</span>
+              <span className="flex-1 z-10">{item.label}</span>
+              {location.pathname === item.to && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse z-10" />}
             </Link>
           ))}
 
@@ -352,10 +398,51 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto no-scrollbar pb-[env(safe-area-inset-bottom,4rem)] print:pb-0 print:overflow-visible">
-            <div className="max-w-7xl mx-auto pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
-              {children}
+        <div className="flex-1 overflow-y-auto no-scrollbar pb-[env(safe-area-inset-bottom,4rem)] print:pb-0 print:overflow-visible bg-white dark:bg-slate-950">
+            <div className="max-w-7xl mx-auto pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] p-6 md:p-10">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={location.pathname}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  {children}
+                </motion.div>
+              </AnimatePresence>
             </div>
+        </div>
+
+        {/* MOBILE FLOATING ACTION BUTTON */}
+        <div className="lg:hidden fixed bottom-8 right-6 z-[100] flex flex-col items-end gap-3 pointer-events-none">
+          <AnimatePresence>
+            {!isAddModalOpen && !isScannerOpen && (
+              <motion.div 
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0, opacity: 0 }}
+                className="pointer-events-auto flex flex-col items-end gap-4"
+              >
+                {can('create_plants') && (
+                  <button
+                    onClick={() => setIsScannerOpen(true)}
+                    className="w-12 h-12 bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 rounded-2xl shadow-2xl flex items-center justify-center text-slate-500 hover:text-verdant active:scale-95 transition-all"
+                  >
+                    <QrCode className="w-5 h-5" />
+                  </button>
+                )}
+                <button
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="w-16 h-16 bg-verdant text-white rounded-[24px] shadow-2xl shadow-verdant/30 flex items-center justify-center active:scale-95 transition-all relative group overflow-hidden border border-emerald-400/50"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-tr from-black/10 to-transparent pointer-events-none" />
+                  <Plus className="w-8 h-8 relative z-10" />
+                  <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </main>
     </div>

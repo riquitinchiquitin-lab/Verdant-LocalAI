@@ -175,6 +175,19 @@ export const ManualView: React.FC = () => {
             </div>
         </div>
 
+        {/* SECTION 6: LOCAL AI INTEGRATION */}
+        <div className="space-y-10">
+            <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-6">
+                <div className="w-14 h-14 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center text-2xl shadow-inner border border-indigo-500/20">🧠</div>
+                {t('doc_ai_title')}
+            </h2>
+            <div className="pl-20">
+                <p className="text-slate-600 dark:text-slate-400 leading-relaxed font-medium text-lg max-w-3xl">
+                    {t('doc_ai_body')}
+                </p>
+            </div>
+        </div>
+
         {/* FOOTER */}
         <div className="pt-24 text-center opacity-30 border-t border-slate-200 dark:border-white/5">
             <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.6em]">{t('manual_footer_copyright')}</p>

@@ -7,13 +7,13 @@ import { useLanguage } from '../context/LanguageContext';
 import { useSystem } from '../context/SystemContext';
 import { Button } from '../components/ui/Button';
 import { Plant } from '../types';
-import { Plus, Scan, Download } from 'lucide-react';
+import { Plus, Scan, Download, Server } from 'lucide-react';
 import { AddPlantModal } from '../components/AddPlantModal';
 import { PlantCard } from '../components/PlantCard';
 import { PlantDetailsModal } from '../components/PlantDetailsModal';
 import { QrScannerModal } from '../components/QrScannerModal';
-import { Logo } from '../components/ui/Logo';
 import { PlantTelemetry } from '../components/PlantTelemetry';
+import { motion } from 'framer-motion';
 import { exportPlantsToNiimbotExcel } from '../services/exportService';
 import { generatePlantDetails } from '../services/plantAi';
 import { generateUUID } from '../services/crypto';
@@ -126,75 +126,134 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  const thirstyCount = useMemo(() => {
+    return plants.filter(p => {
+        if (!p.lastWatered || !p.wateringInterval) return false;
+        const lastDate = new Date(p.lastWatered);
+        const intervalMs = p.wateringInterval * 86400000;
+        return (lastDate.getTime() + intervalMs - Date.now()) <= 0;
+    }).length;
+  }, [plants]);
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, scale: 0.95, y: 20 },
+    show: { opacity: 1, scale: 1, y: 0 }
+  };
+
   return (
-    <div className="max-w-7xl mx-auto space-y-8 pb-20 transition-all">
+    <div className="max-w-7xl mx-auto pb-20 space-y-8">
         <AddPlantModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onSave={addPlant} />
         <PlantDetailsModal isOpen={!!selectedPlant} plant={selectedPlant} onClose={() => setSelectedPlant(null)} />
         <QrScannerModal isOpen={isScannerOpen} onClose={() => setIsScannerOpen(false)} onScanSuccess={handleScanSuccess} />
 
-        {/* CLEAN HEADER */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 px-6 md:px-10 pt-10 pb-4">
-            <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-white dark:bg-slate-900 rounded-2xl shadow-sm flex items-center justify-center border border-gray-100 dark:border-white/5">
-                    <Logo className="w-8 h-8 text-verdant" />
+        {/* REFINED SYSTEM HEADER */}
+        <div className="px-6 md:px-10 pt-4 flex flex-col gap-8 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-verdant/5 blur-[120px] rounded-full -mr-64 -mt-64 pointer-events-none" />
+            
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative z-10">
+                <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-1.5 h-1.5 rounded-full bg-verdant animate-ping" />
+                      <p className="text-[10px] font-black text-verdant uppercase tracking-[0.5em] mb-0 whitespace-nowrap">
+                        {isSynced ? 'BIO_MONITOR_UP' : 'OFFLINE_CACHE_DEPLOYED'} // {new Date().toLocaleTimeString(undefined, { hour12: false })}
+                      </p>
+                    </div>
+                    <div className="space-y-0">
+                      <h1 className="text-6xl md:text-8xl font-black text-gray-900 dark:text-white tracking-tighter uppercase leading-[0.8]">
+                          {t('app_name')} <span className="text-verdant opacity-50">/</span>
+                      </h1>
+                      <div className="flex items-center gap-3 mt-2">
+                        <span className="h-[2px] w-8 bg-slate-200 dark:bg-slate-800" />
+                        <p className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em]">
+                          {user?.house?.name?.en || 'UNATTRIBUTED_SECTOR'} // {user?.houseId?.slice(0, 8).toUpperCase() || 'CORE'}
+                        </p>
+                      </div>
+                    </div>
                 </div>
-                <div>
-                    <h1 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white tracking-tighter uppercase leading-none">Verdant</h1>
+
+                <div className="flex items-center gap-4">
+                    {isAdmin && (
+                        <div className="relative">
+                          <select 
+                              className="h-12 pl-6 pr-12 bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 outline-none focus:ring-4 focus:ring-verdant/5 transition-all appearance-none min-w-[200px]"
+                              value={selectedHouseFilter}
+                              onChange={(e) => setSelectedHouseFilter(e.target.value as any)}
+                          >
+                              <option value="ALL">ALL_GLOBAL_ASSETS</option>
+                              <option value="UNATTRIBUTED">UNATTRIBUTED_BIO</option>
+                              {houses.map(h => (
+                                  <option key={h.id} value={h.id}>{lv(h.name)}</option>
+                              ))}
+                          </select>
+                          <Download className="absolute right-4 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-300 pointer-events-none" />
+                        </div>
+                    )}
+                    <button 
+                      onClick={() => setIsScannerOpen(true)}
+                      className="w-12 h-12 flex items-center justify-center bg-white dark:bg-slate-900 border border-gray-100 dark:border-white/5 rounded-2xl text-slate-500 hover:text-verdant hover:shadow-2xl hover:scale-105 transition-all active:scale-95"
+                    >
+                      <Scan className="w-5 h-5" />
+                    </button>
+                    <button 
+                      onClick={handleExport}
+                      className="w-12 h-12 flex items-center justify-center bg-white dark:bg-slate-900 border border-gray-100 dark:border-white/5 rounded-2xl text-slate-500 hover:text-blue-500 hover:shadow-2xl hover:scale-105 transition-all active:scale-95"
+                      title="Export Asset List"
+                    >
+                      <Download className="w-5 h-5" />
+                    </button>
                 </div>
             </div>
-            
-            <div className="flex items-center gap-3">
-                {isAdmin && (
-                    <div className="flex flex-col md:flex-row items-end md:items-center gap-3">
-                        <select 
-                            className="h-12 px-4 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all appearance-none min-w-[160px]"
-                            value={selectedHouseFilter}
-                            onChange={(e) => setSelectedHouseFilter(e.target.value as any)}
-                        >
-                            <option value="ALL">{t('labels_all_global_properties')}</option>
-                            <option value="UNATTRIBUTED">{t('lbl_unattributed')}</option>
-                            {houses.map(h => (
-                                <option key={h.id} value={h.id}>{lv(h.name)}</option>
-                            ))}
-                        </select>
 
-
-                    </div>
-                )}
-                <Button
-                    onClick={() => setIsAddModalOpen(true)}
-                    className="h-12 px-6 bg-verdant text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-verdant/20 hover:scale-105 transition-all flex items-center gap-2"
-                >
-                    <Plus className="w-4 h-4" />
-                    {t('btn_add_plant')}
-                </Button>
+            {/* QUICK STATUS TICKER */}
+            <div className="flex flex-wrap gap-3">
+                <div className="px-5 py-2.5 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 flex items-center gap-3 group hover:border-amber-200 transition-colors cursor-pointer">
+                    <div className={`w-2 h-2 rounded-full ${thirstyCount > 0 ? 'bg-amber-500 animate-[pulse_1.5s_infinite] shadow-[0_0_8px_rgba(245,158,11,0.6)]' : 'bg-emerald-500'}`} />
+                    <span className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest font-mono">
+                      {thirstyCount > 0 ? `HYDRATION_DEFICIT: ${thirstyCount}_UNITS` : 'WATER_CORE: STABLE'}
+                    </span>
+                </div>
+                <div className="px-5 py-2.5 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 flex items-center gap-3">
+                    <Server className="w-3.5 h-3.5 text-blue-500" />
+                    <span className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest font-mono">
+                      SRV_NODE: US-EAST-1/PRX-01
+                    </span>
+                </div>
             </div>
         </div>
 
         <PlantTelemetry />
 
-        <div className="px-6 md:px-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 pb-8">
-            {featured && (
-                <div key={featured.id} className="relative group">
-                    {!featured.houseId && (
-                        <div className="absolute -top-3 -right-3 z-20 bg-amber-500 text-white text-[8px] font-black px-2 py-1 rounded-full shadow-lg border-2 border-white dark:border-slate-900 uppercase tracking-widest animate-bounce">
-                            {t('lbl_unattributed')}
-                        </div>
-                    )}
-                    <PlantCard plant={featured} onClick={() => setSelectedPlant(featured)} showActions={can('log_data')} />
-                </div>
-            )}
-            {others.map(plant => (
-                <div key={plant.id} className="relative group">
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          animate="show"
+          className="px-6 md:px-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 pb-8"
+        >
+            {filtered.map(plant => (
+                <motion.div 
+                  key={plant.id} 
+                  variants={itemVariants}
+                  className="relative group"
+                >
                     {!plant.houseId && (
                         <div className="absolute -top-3 -right-3 z-20 bg-amber-500 text-white text-[8px] font-black px-2 py-1 rounded-full shadow-lg border-2 border-white dark:border-slate-900 uppercase tracking-widest animate-bounce">
                             {t('lbl_unattributed')}
                         </div>
                     )}
                     <PlantCard plant={plant} onClick={() => setSelectedPlant(plant)} showActions={can('log_data')} />
-                </div>
+                </motion.div>
             ))}
-        </div>
+        </motion.div>
         
         {filtered.length === 0 && (
             <div className="py-24 text-center border-4 border-dashed border-gray-100 dark:border-slate-800 rounded-[48px]">

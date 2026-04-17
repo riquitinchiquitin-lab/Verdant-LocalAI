@@ -4,7 +4,12 @@ import { usePlants } from '../context/PlantContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../constants';
-import { Activity, Cpu, Database, Key } from 'lucide-react';
+import { Activity, Cpu, Database, Key, Brain } from 'lucide-react';
+
+interface LocalAiStatus {
+    isSupported: boolean;
+    origin: string;
+}
 
 interface ApiUsage {
     gemini_count: number;
@@ -32,6 +37,21 @@ export const SystemTelemetry: React.FC = () => {
     const { t } = useLanguage();
     const { token, user } = useAuth();
     const [apiUsage, setApiUsage] = useState<ApiUsage | null>(null);
+    const [localAi, setLocalAi] = useState<LocalAiStatus>({ isSupported: false, origin: 'NONE' });
+
+    useEffect(() => {
+        const checkAi = async () => {
+            if (typeof window !== 'undefined') {
+                const hasWindowAi = 'ai' in window && (window as any).ai?.createTextSession;
+                const hasGpu = 'gpu' in navigator;
+                setLocalAi({
+                    isSupported: !!(hasWindowAi || hasGpu),
+                    origin: hasWindowAi ? 'PROMPT_API' : (hasGpu ? 'WEBGPU' : 'NONE')
+                });
+            }
+        };
+        checkAi();
+    }, []);
 
     useEffect(() => {
         const fetchUsage = () => {
@@ -45,10 +65,12 @@ export const SystemTelemetry: React.FC = () => {
                     }
                 })
                 .then(res => {
+                    if (!res.ok) return null;
                     const contentType = res.headers.get("content-type");
-                    if (res.ok && contentType && contentType.includes("application/json")) {
+                    if (contentType && contentType.includes("application/json")) {
                         return res.json();
                     }
+                    console.warn("[SystemTelemetry] API returned non-JSON response:", contentType);
                     return null;
                 })
                 .then(data => setApiUsage(data))
@@ -176,6 +198,32 @@ export const SystemTelemetry: React.FC = () => {
                                 </div>
                             );
                         })}
+                    </div>
+                </div>
+
+                <div className="relative z-10 flex flex-col gap-1 lg:col-span-full xl:col-span-1">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Brain className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
+                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">On-Device AI</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <div className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-tight ${localAi.isSupported ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
+                            {localAi.isSupported ? `Active (${localAi.origin})` : 'Offline'}
+                        </div>
+                        {localAi.origin !== 'PROMPT_API' && (
+                            <div className="group relative">
+                                <div className="text-[8px] font-bold text-slate-400 border-b border-dashed border-slate-400 cursor-help">Chrome Prompt API Instructions</div>
+                                <div className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-slate-900 text-white text-[10px] rounded-xl hidden group-hover:block shadow-2xl border border-white/10 z-50">
+                                    <p className="font-black text-emerald-400 mb-1 leading-tight uppercase">Requirements:</p>
+                                    <p className="opacity-70 leading-relaxed">
+                                        You must have the <strong>"Prompt API"</strong> flag enabled in <code>chrome://flags</code>. This allows for near-instant botanical recognition using Gemini Nano.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    <div className="mt-3 text-[9px] text-slate-400 dark:text-slate-500 italic">
+                        {localAi.isSupported ? 'Hardware acceleration active.' : 'Falling back to Cloud (Gemini 1.5).'}
                     </div>
                 </div>
             </div>

@@ -67,23 +67,24 @@ export const PlantDetailsModal: React.FC<PlantDetailsModalProps> = ({ isOpen, on
   );
 
   const TechMetric = ({ label, min, max, unit, advice }: { label: string, min?: number | null, max?: number | null, unit: string, advice: string }) => (
-    <div className="relative space-y-4 p-6 bg-white dark:bg-slate-900 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden group hover:scale-105 transition-all duration-300 cursor-pointer">
-      {/* Hardware Decoration: Corner Accent */}
-      <div className="absolute top-0 right-0 w-8 h-8 opacity-10">
-        <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-verdant" />
+    <div className="relative space-y-4 p-8 bg-slate-50 dark:bg-slate-900 rounded-[32px] border border-gray-100 dark:border-white/5 shadow-sm overflow-hidden group hover:scale-[1.02] transition-all duration-500 cursor-pointer">
+      <div className="absolute top-0 right-0 p-4">
+        <div className="w-1.5 h-1.5 rounded-full bg-verdant animate-pulse" />
       </div>
       
-      <p className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">{label}</p>
-      <div className="flex items-baseline gap-1">
-        <span className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter">
-          {min !== undefined && min !== null && max !== undefined && max !== null ? `${min}-${max}` : (min ?? max ?? t('lbl_na'))}
+      <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] font-mono">{label}</p>
+      <div className="flex items-baseline gap-2">
+        <span className="text-5xl font-black text-gray-900 dark:text-white tracking-tighter font-mono">
+          {min !== undefined && min !== null && max !== undefined && max !== null ? `${min}-${max}` : (min ?? max ?? '--')}
         </span>
-        <span className="text-xs font-bold text-verdant uppercase tracking-widest">{unit}</span>
+        <span className="text-xs font-black text-verdant uppercase tracking-widest">{unit}</span>
       </div>
-      <div className="h-0.5 w-full bg-gray-50 dark:bg-slate-800 rounded-full overflow-hidden">
-        <div className="h-full bg-verdant w-2/3 opacity-30 group-hover:w-full transition-all duration-700" />
+      <div className="h-1 w-full bg-gray-200 dark:bg-slate-800 rounded-full overflow-hidden flex p-[1px]">
+        <div className="h-full bg-verdant w-full origin-left scale-x-[0.6] group-hover:scale-x-100 transition-transform duration-1000" />
       </div>
-      <p className="text-[13px] font-serif italic text-slate-600 dark:text-slate-300 leading-relaxed">"{advice}"</p>
+      <p className="text-[12px] font-serif italic text-slate-600 dark:text-slate-400 leading-relaxed opacity-80 group-hover:opacity-100 transition-opacity">
+        {advice || 'Optimizing parameters for biological stability...'}
+      </p>
     </div>
   );
 
@@ -436,19 +437,23 @@ export const PlantDetailsModal: React.FC<PlantDetailsModalProps> = ({ isOpen, on
                       </span>
                     </div>
 
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-10" />
                     
-                    <div className="absolute bottom-0 left-0 right-0 p-8 md:p-16 z-20">
+                    <div className="absolute inset-0 z-20 overflow-hidden pointer-events-none">
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] opacity-10 blur-3xl bg-emerald-500 rounded-full mix-blend-screen" />
+                    </div>
+
+                    <div className="absolute bottom-0 left-0 right-0 p-8 md:p-16 z-30">
                       <motion.div
                         initial={{ y: 30, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ delay: 0.2, duration: 0.8 }}
                       >
                         <div className="flex items-center gap-4 mb-4">
-                          <span className="h-px w-12 bg-verdant" />
-                          <p className="text-[11px] font-black text-verdant uppercase tracking-[0.4em]">{t('lbl_specimen_profile')}</p>
+                          <div className="h-[2px] w-12 bg-verdant origin-left scale-x-150" />
+                          <p className="text-[11px] font-black text-verdant uppercase tracking-[0.4em] drop-shadow-sm">{t('lbl_specimen_profile')}</p>
                         </div>
-                        <h2 className="text-6xl md:text-[120px] font-black text-white tracking-tighter leading-[0.8] uppercase mb-4">
+                        <h2 className="text-7xl md:text-[140px] font-black text-white tracking-tighter leading-[0.75] uppercase mb-6 mix-blend-difference">
                           {lv(plant.nickname)}
                         </h2>
                         <div className="flex flex-wrap items-center gap-6 text-white/60">

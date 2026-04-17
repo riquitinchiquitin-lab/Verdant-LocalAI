@@ -33,29 +33,36 @@ export const fetchWithAuth = async (endpoint: string, token: string, options: Re
 
   let processedOptions = { ...options, headers: { ...headers } };
 
+  // Add a 15-second timeout to prevent indefinite hangs on iOS/Mobile
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  processedOptions.signal = controller.signal;
+
   if (import.meta.env.DEV) {
     console.log(`[API] ${options.method || 'GET'} ${endpoint}`);
   }
 
-  // 1. Perform Outgoing Encryption if master key is available and there's a body
-  if (masterKey && options.body && typeof options.body === 'string') {
-    try {
-      const originalData = JSON.parse(options.body);
-      const encryptedData = await encryptPayload(originalData, masterKey!);
-      
-      processedOptions.body = JSON.stringify({ 
-        vault: encryptedData,
-        secure: true 
-      });
-      (processedOptions.headers as Record<string, string>)['X-Payload-Encryption'] = 'AES-256-GCM';
-    } catch (e) {
-      console.warn("Payload encryption skipped: Body not JSON or key invalid.");
+  try {
+    // 1. Perform Outgoing Encryption if master key is available and there's a body
+    if (masterKey && options.body && typeof options.body === 'string') {
+      try {
+        const originalData = JSON.parse(options.body);
+        const encryptedData = await encryptPayload(originalData, masterKey!);
+        
+        processedOptions.body = JSON.stringify({ 
+          vault: encryptedData,
+          secure: true 
+        });
+        (processedOptions.headers as Record<string, string>)['X-Payload-Encryption'] = 'AES-256-GCM';
+      } catch (e) {
+        console.warn("Payload encryption skipped: Body not JSON or key invalid.");
+      }
     }
-  }
 
-  let response = await fetch(`${API_URL}${endpoint}`, processedOptions);
+    let response = await fetch(`${API_URL}${endpoint}`, processedOptions);
+    clearTimeout(timeoutId);
 
-  if (response.status === 401) {
+    if (response.status === 401) {
     console.warn("Unauthorized access");
     throw new Error("Unauthorized");
   }
@@ -125,4 +132,12 @@ export const fetchWithAuth = async (endpoint: string, token: string, options: Re
   }
 
   return response;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error && err.name === 'AbortError') {
+      console.warn(`[API] Timeout reached for ${endpoint}`);
+      throw new Error("NETWORK_TIMEOUT");
+    }
+    throw err;
+  }
 };

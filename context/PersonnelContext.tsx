@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { User } from '../types';
 import { fetchWithAuth } from '../services/api';
+import { storage } from '../services/storage';
 import { useAuth } from './AuthContext';
 
 interface PersonnelContextType {
@@ -50,7 +51,7 @@ export const PersonnelProvider: React.FC<{ children: ReactNode }> = ({ children 
   useEffect(() => {
     const hydrate = async () => {
       try {
-        const saved = localStorage.getItem('verdant_personnel_v8');
+        const saved = storage.get('verdant_personnel_v8');
         if (saved) setUsers(JSON.parse(saved));
       } catch (e) {}
       setIsPersistenceReady(true);
@@ -68,7 +69,7 @@ export const PersonnelProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   useEffect(() => {
     if (!isPersistenceReady) return;
-    localStorage.setItem('verdant_personnel_v8', JSON.stringify(users));
+    storage.set('verdant_personnel_v8', JSON.stringify(users));
   }, [users, isPersistenceReady]);
 
   const addUser = async (newUser: User) => {

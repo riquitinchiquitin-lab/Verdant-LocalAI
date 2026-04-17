@@ -187,6 +187,8 @@ const staticTranslations: Record<string, Record<string, string>> = {
     doc_inventory_body: "The system includes a proportion calculation engine for custom soil and fertilizer mixes, ensuring precise nutrient delivery across all houses.",
     doc_labels_title: "5.0 Labeling & Tracking",
     doc_labels_body: "Labels are exported in Niimbot-compatible formats, including unique sync hashes for physical-to-digital specimen mapping.",
+    doc_ai_title: "6.0 Local AI Integration",
+    doc_ai_body: "For near-instant response times and maximum privacy, Verdant supports on-device AI. To utilize the Chrome-native Prompt API, you must have the 'Prompt API' flag enabled in chrome://flags. Hardware acceleration via WebGPU is also supported for general-purpose local processing.",
     lbl_translating: "Translating...",
     metric: "Metric",
     imperial: "Imperial",

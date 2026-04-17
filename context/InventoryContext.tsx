@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { InventoryItem, Plant } from '../types';
 import { fetchWithAuth } from '../services/api';
 import { useAuth } from './AuthContext';
+import { storage } from '../services/storage';
 
 interface InventoryContextType {
   inventory: InventoryItem[];
@@ -48,7 +49,7 @@ export const InventoryProvider: React.FC<{ children: ReactNode }> = ({ children 
   useEffect(() => {
     const hydrate = async () => {
       try {
-        const saved = localStorage.getItem('verdant_inventory_v8');
+        const saved = storage.get('verdant_inventory_v8');
         if (saved) setInventory(JSON.parse(saved));
       } catch (e) {}
       setIsPersistenceReady(true);
@@ -70,7 +71,7 @@ export const InventoryProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   useEffect(() => {
     if (!isPersistenceReady) return;
-    localStorage.setItem('verdant_inventory_v8', JSON.stringify(inventory));
+    storage.set('verdant_inventory_v8', JSON.stringify(inventory));
   }, [inventory, isPersistenceReady]);
 
   const addItem = (item: InventoryItem) => {

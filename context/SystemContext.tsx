@@ -48,6 +48,9 @@ interface SystemContextType {
   isLocalAiEnabled: boolean;
   setLocalAiEnabled: (enabled: boolean) => void;
   localAiOrigin: 'WINDOW_AI' | 'WEBGPU' | 'NONE';
+  localAiProgress: number;
+  isLocalAiLoading: boolean;
+  initLocalAi: () => Promise<void>;
 }
 
 const SystemContext = createContext<SystemContextType | undefined>(undefined);
@@ -55,7 +58,8 @@ const SystemContext = createContext<SystemContextType | undefined>(undefined);
 const FREE_TIER_RPM_LIMIT = 15;
 const WINDOW_MS = 60000;
 
-import { checkLocalAiSupport } from '../services/LocalAiService';
+import { checkLocalAiSupport, initWebLlm } from '../services/LocalAiService';
+import { storage } from '../services/storage';
 
 export const SystemProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { token } = useAuth();
@@ -64,26 +68,60 @@ export const SystemProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [notification, setNotification] = useState<Notification | null>(null);
   const [isLocalAiSupported, setIsLocalAiSupported] = useState(false);
   const [isLocalAiEnabled, setIsLocalAiEnabled] = useState(() => {
-    return localStorage.getItem('verdant-local-ai') === 'true';
+    return storage.get('verdant-local-ai') === 'true';
   });
   const [localAiOrigin, setLocalAiOrigin] = useState<'WINDOW_AI' | 'WEBGPU' | 'NONE'>('NONE');
+  const [localAiProgress, setLocalAiProgress] = useState(0);
+  const [isLocalAiLoading, setIsLocalAiLoading] = useState(false);
 
   useEffect(() => {
-    requestNotificationPermission();
-    
     // Check for local AI support on mount
     const checkSupport = async () => {
-      const caps = await checkLocalAiSupport();
-      setIsLocalAiSupported(caps.isSupported);
-      setLocalAiOrigin(caps.origin);
+      try {
+        const caps = await checkLocalAiSupport();
+        setIsLocalAiSupported(caps.isSupported);
+        setLocalAiOrigin(caps.origin);
+      } catch (e) {
+        console.warn("System Probe Failed:", e);
+      }
     };
+    
     checkSupport();
+
+    // Deferred notification request - don't block mount
+    setTimeout(() => {
+      try {
+        requestNotificationPermission();
+      } catch (e) {}
+    }, 1000);
   }, []);
+
+  const initLocalAi = useCallback(async () => {
+    if (localAiOrigin !== 'WEBGPU') return;
+    
+    setIsLocalAiLoading(true);
+    setLocalAiProgress(0);
+    try {
+      await initWebLlm((progress) => {
+        setLocalAiProgress(progress);
+      });
+      showNotification("LOCAL AI CORE SYNCED", "SUCCESS");
+    } catch (e) {
+      console.error("Local AI Initialization failed:", e);
+      showNotification("LOCAL AI SYNC FAILED", "ERROR");
+    } finally {
+      setIsLocalAiLoading(false);
+    }
+  }, [localAiOrigin]);
 
   const setLocalAiEnabled = useCallback((enabled: boolean) => {
     setIsLocalAiEnabled(enabled);
-    localStorage.setItem('verdant-local-ai', enabled.toString());
-  }, []);
+    storage.set('verdant-local-ai', enabled.toString());
+    
+    if (enabled && localAiOrigin === 'WEBGPU') {
+        initLocalAi();
+    }
+  }, [localAiOrigin, initLocalAi]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -129,7 +167,14 @@ export const SystemProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     if (!token) return null;
     try {
       const res = await fetchWithAuth('/api/system/usage', token);
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+           return await res.json();
+        }
+        console.warn("[SystemContext] API returned non-JSON response for usage:", contentType);
+        return null;
+      }
       return null;
     } catch (e) {
       console.error("Failed to fetch system usage:", e);
@@ -160,7 +205,10 @@ export const SystemProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       isLocalAiSupported,
       isLocalAiEnabled,
       setLocalAiEnabled,
-      localAiOrigin
+      localAiOrigin,
+      localAiProgress,
+      isLocalAiLoading,
+      initLocalAi
     }}>
       {children}
     </SystemContext.Provider>

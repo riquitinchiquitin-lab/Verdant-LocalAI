@@ -7,6 +7,7 @@ import { useLanguage } from './LanguageContext';
 import { translateInput, TARGET_LANGS } from '../services/translationService';
 import { sendNotification } from '../services/notifications';
 import { generateUUID } from '../services/crypto';
+import { storage } from '../services/storage';
 
 interface PlantContextType {
   plants: Plant[];
@@ -122,10 +123,10 @@ export const PlantProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   useEffect(() => {
     const hydrate = async () => {
       try {
-        const savedPlants = localStorage.getItem('verdant_plants_v8');
-        const savedHouses = localStorage.getItem('verdant_houses_v8');
-        const savedTasks = localStorage.getItem('verdant_tasks_v8');
-        const savedRooms = localStorage.getItem('verdant_custom_rooms');
+        const savedPlants = storage.get('verdant_plants_v8');
+        const savedHouses = storage.get('verdant_houses_v8');
+        const savedTasks = storage.get('verdant_tasks_v8');
+        const savedRooms = storage.get('verdant_custom_rooms');
         
         if (savedPlants) setPlants(JSON.parse(savedPlants));
         if (savedHouses) setHouses(JSON.parse(savedHouses));
@@ -160,10 +161,16 @@ export const PlantProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   useEffect(() => {
     if (!isPersistenceReady) return;
-    localStorage.setItem('verdant_plants_v8', JSON.stringify(plants));
-    localStorage.setItem('verdant_houses_v8', JSON.stringify(houses));
-    localStorage.setItem('verdant_tasks_v8', JSON.stringify(tasks));
+    storage.set('verdant_plants_v8', JSON.stringify(plants));
+    storage.set('verdant_houses_v8', JSON.stringify(houses));
+    storage.set('verdant_tasks_v8', JSON.stringify(tasks));
   }, [plants, houses, tasks, isPersistenceReady]);
+
+  // Automated Thirsty Plant Notifications
+  useEffect(() => {
+    if (!isPersistenceReady) return;
+    storage.set('verdant_custom_rooms', JSON.stringify(customRooms));
+  }, [customRooms, isPersistenceReady]);
 
   // Automated Thirsty Plant Notifications
   useEffect(() => {

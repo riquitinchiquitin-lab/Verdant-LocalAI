@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
+import { nativeFeedback } from '../../services/nativeService';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
@@ -16,24 +17,28 @@ export const Button: React.FC<ButtonProps> = ({
   disabled,
   ...props 
 }) => {
-  const baseStyles = "inline-flex items-center justify-center rounded-lg font-bold transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-100 dark:border-slate-700";
+  const baseStyles = "inline-flex items-center justify-center rounded-2xl font-black transition-all focus:outline-none focus:ring-4 disabled:opacity-50 disabled:cursor-not-allowed border uppercase tracking-[0.15em]";
   
   const variants = {
-    primary: "bg-verdant text-white hover:bg-verdant-hover focus:ring-verdant shadow-sm dark:focus:ring-offset-slate-900",
-    secondary: "bg-white text-slate-900 hover:bg-slate-50 focus:ring-verdant dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700",
-    danger: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 border-red-500/50",
-    ghost: "bg-transparent text-gray-600 hover:bg-gray-100 focus:ring-gray-400 dark:text-slate-300 dark:hover:bg-slate-800",
+    primary: "bg-verdant text-white hover:bg-emerald-600 border-verdant-hover focus:ring-verdant/20 shadow-xl shadow-verdant/20",
+    secondary: "bg-white text-slate-900 hover:bg-slate-50 border-gray-100 focus:ring-slate-500/10 dark:bg-slate-900 dark:text-white dark:border-slate-800 dark:hover:bg-slate-800",
+    danger: "bg-rose-600 text-white hover:bg-rose-700 border-rose-500/50 shadow-xl shadow-rose-500/10 focus:ring-rose-500/20",
+    ghost: "bg-transparent text-slate-500 hover:bg-slate-100 border-transparent dark:text-slate-400 dark:hover:bg-slate-800",
   };
 
   const sizes = {
-    sm: "px-3 py-1.5 text-xs uppercase tracking-wider",
-    md: "px-4 py-2.5 text-sm uppercase tracking-wide",
-    lg: "px-6 py-3.5 text-base uppercase tracking-widest",
+    sm: "px-4 py-2 text-[8px]",
+    md: "px-6 py-3 text-[10px]",
+    lg: "px-8 py-4 text-[12px]",
   };
 
   return (
     <motion.button 
       whileTap={{ scale: 0.96 }}
+      onClick={(e) => {
+        nativeFeedback.impact();
+        props.onClick?.(e);
+      }}
       className={`${baseStyles} ${variant ? variants[variant] : ''} ${sizes[size]} ${className}`}
       disabled={disabled || isLoading}
       {...(props as any)}

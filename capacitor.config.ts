@@ -1,0 +1,24 @@
+import { CapacitorConfig } from '@capacitor/cli';
+
+const config: CapacitorConfig = {
+  appId: 'com.verdant.app',
+  appName: 'Verdant',
+  webDir: 'dist',
+  bundledWebRuntime: false,
+  plugins: {
+    SplashScreen: {
+      launchShowDuration: 2000,
+      backgroundColor: "#064e3b",
+      showSpinner: true,
+      androidSpinnerStyle: "large",
+      iosSpinnerStyle: "small",
+      spinnerColor: "#10b981",
+    },
+    StatusBar: {
+      style: 'DARK',
+      backgroundColor: '#064e3b',
+    }
+  }
+};
+
+export default config;

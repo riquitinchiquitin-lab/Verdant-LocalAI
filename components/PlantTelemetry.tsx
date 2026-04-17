@@ -11,7 +11,7 @@ export const PlantTelemetry: React.FC = () => {
     const { plants } = usePlants();
     const { t } = useLanguage();
     const { user } = useAuth();
-    const { isLocalAiEnabled, isLocalAiSupported, localAiOrigin, fetchUsage } = useSystem();
+    const { isLocalAiEnabled, isLocalAiSupported, localAiOrigin, localAiProgress, isLocalAiLoading, fetchUsage } = useSystem();
     const [showHelp, setShowHelp] = useState(false);
     const [usage, setUsage] = useState<UsageData | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -94,24 +94,39 @@ export const PlantTelemetry: React.FC = () => {
                 </div>
 
                 {isLocalAiSupported && (
-                    <div className="md:col-span-2 pt-4 mt-2 border-t border-gray-50 dark:border-white/5 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <Sparkles className={`w-3 h-3 ${isLocalAiEnabled ? 'text-amber-500 animate-pulse' : 'text-slate-300'}`} />
-                            <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                                {isLocalAiEnabled ? 'Local AI Active' : 'Local AI Standby'}
+                    <div className="md:col-span-2 pt-4 mt-2 border-t border-gray-50 dark:border-white/5 flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Sparkles className={`w-3 h-3 ${isLocalAiEnabled ? 'text-amber-500 animate-pulse' : 'text-slate-300'}`} />
+                                <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                    {isLocalAiLoading ? 'AI Core Initializing...' : isLocalAiEnabled ? 'Local AI Active' : 'Local AI Standby'}
+                                </span>
+                                {!isLocalAiEnabled && localAiOrigin === 'WINDOW_AI' && (
+                                    <button 
+                                        onClick={() => setShowHelp(true)}
+                                        className="p-1 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-colors"
+                                    >
+                                        <HelpCircle className="w-3 h-3 text-amber-500" />
+                                    </button>
+                                )}
+                            </div>
+                            <span className="text-[7px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-tighter">
+                                {localAiOrigin === 'WINDOW_AI' ? 'Tensor G4 / Gemini Nano' : 'WebGPU / A18 Pro'}
                             </span>
-                            {!isLocalAiEnabled && localAiOrigin === 'WINDOW_AI' && (
-                                <button 
-                                    onClick={() => setShowHelp(true)}
-                                    className="p-1 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-colors"
-                                >
-                                    <HelpCircle className="w-3 h-3 text-amber-500" />
-                                </button>
-                            )}
                         </div>
-                        <span className="text-[7px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-tighter">
-                            {localAiOrigin === 'WINDOW_AI' ? 'Tensor G4 / Gemini Nano' : 'WebGPU / A18 Pro'}
-                        </span>
+                        
+                        {isLocalAiLoading && (
+                            <div className="space-y-1.5 px-1">
+                                <div className="h-1 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                    <motion.div 
+                                        className="h-full bg-amber-500" 
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${localAiProgress * 100}%` }}
+                                    />
+                                </div>
+                                <p className="text-[6px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Syncing Weight Gradients: {Math.round(localAiProgress * 100)}%</p>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
