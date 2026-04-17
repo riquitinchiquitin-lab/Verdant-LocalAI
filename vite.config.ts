@@ -13,6 +13,10 @@ export default defineConfig(({ mode }) => {
       isProd && VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['logo.svg', 'apple-touch-icon.png', 'masked-icon.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
+        workbox: {
+          maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10MB limit to support local AI libraries
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
+        },
         manifest: {
           name: 'Verdant Botanical Systems',
           short_name: 'Verdant',
