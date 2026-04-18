@@ -805,6 +805,103 @@ app.post('/api/users', checkAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: "DB_FAULT" }); }
 });
 
+// --- MOBILE BRIDGE API ---
+
+app.post('/api/mobile/token', checkAuth, async (req, res) => {
+  const role = (req as any).userRole;
+  const userId = (req as any).userId;
+  if (!['OWNER', 'CO_CEO'].includes(role)) return res.status(403).json({ error: "FORBIDDEN" });
+
+  try {
+    const token = crypto.randomBytes(32).toString('hex');
+    const handshakeId = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // 5 min expiry
+
+    await query('INSERT INTO mobile_handshake (id, token, userId, expiresAt) VALUES (?, ?, ?, ?)', 
+      [handshakeId, token, userId, expiresAt]);
+    
+    res.json({ 
+      token, 
+      expiresAt,
+      // Provide the bridge URL so mobile apps know where to connect
+      nodeUrl: process.env.BASE_URL || `https://${req.get('host')}`
+    });
+  } catch (e) {
+    res.status(500).json({ error: "MOBILE_TOKEN_FAULT" });
+  }
+});
+
+app.post('/api/mobile/handshake', async (req, res) => {
+  const { token, deviceName, deviceId } = req.body;
+  if (!token || !deviceName || !deviceId) return res.status(400).json({ error: "INVALID_HANDSHAKE" });
+
+  try {
+    const result = await query('SELECT * FROM mobile_handshake WHERE token = ? AND usedAt IS NULL', [token]);
+    if (result.rows.length === 0) return res.status(401).json({ error: "INVALID_OR_USED_TOKEN" });
+
+    const handshake = result.rows[0];
+    if (new Date(handshake.expiresAt) < new Date()) return res.status(410).json({ error: "TOKEN_EXPIRED" });
+
+    const handshakeKey = crypto.randomBytes(32).toString('hex');
+    await query('UPDATE mobile_handshake SET usedAt = ? WHERE id = ?', [new Date().toISOString(), handshake.id]);
+    
+    await query('INSERT OR REPLACE INTO mobile_devices (id, userId, deviceName, handshakeKey, pairedAt, lastSeen) VALUES (?, ?, ?, ?, ?, ?)',
+      [deviceId, handshake.userId, deviceName, handshakeKey, new Date().toISOString(), new Date().toISOString()]);
+
+    const userResult = await query('SELECT role, houseId, email FROM users WHERE id = ?', [handshake.userId]);
+    const user = userResult.rows[0];
+
+    await logSystemEvent('MOBILE_DEVICE_PAIRED', `Device ${deviceName} paired with user ${handshake.userId}`, 'INFO');
+
+    res.json({ 
+      handshakeKey, 
+      user: {
+        id: handshake.userId,
+        role: user.role,
+        houseId: user.houseId,
+        email: user.email
+      },
+      vaultInit: currentVaultKey ? true : false
+    });
+  } catch (e) {
+    res.status(500).json({ error: "HANDSHAKE_FAULT" });
+  }
+});
+
+app.get('/api/mobile/devices', checkAuth, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const role = (req as any).userRole;
+    
+    let sql = 'SELECT id, deviceName, pairedAt, lastSeen FROM mobile_devices';
+    let params: any[] = [];
+    
+    if (!['OWNER', 'CO_CEO'].includes(role)) {
+      sql += ' WHERE userId = ?';
+      params.push(userId);
+    }
+    
+    const result = await query(sql, params);
+    res.json(result.rows);
+  } catch (e) { res.status(500).json({ error: "FETCH_DEVICES_FAULT" }); }
+});
+
+app.delete('/api/mobile/devices/:id', checkAuth, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const role = (req as any).userRole;
+    const { id } = req.params;
+
+    if (['OWNER', 'CO_CEO'].includes(role)) {
+      await query('DELETE FROM mobile_devices WHERE id = ?', [id]);
+    } else {
+      await query('DELETE FROM mobile_devices WHERE id = ? AND userId = ?', [id, userId]);
+    }
+    
+    res.json({ status: "ok" });
+  } catch (e) { res.status(500).json({ error: "DELETE_DEVICE_FAULT" }); }
+});
+
 app.get('/env-config.js', async (req, res) => {
   res.setHeader('Content-Type', 'application/javascript');
   
@@ -876,6 +973,21 @@ async function initializeDatabase() {
       local_ai_count INTEGER DEFAULT 0,
       local_ai_tokens INTEGER DEFAULT 0,
       last_updated TEXT
+    )`,
+    `CREATE TABLE IF NOT EXISTS mobile_devices (
+      id TEXT PRIMARY KEY,
+      userId TEXT,
+      deviceName TEXT,
+      handshakeKey TEXT,
+      pairedAt TEXT,
+      lastSeen TEXT
+    )`,
+    `CREATE TABLE IF NOT EXISTS mobile_handshake (
+      id TEXT PRIMARY KEY,
+      token TEXT UNIQUE NOT NULL,
+      userId TEXT NOT NULL,
+      expiresAt TEXT NOT NULL,
+      usedAt TEXT
     )`
   ];
 

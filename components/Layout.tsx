@@ -45,9 +45,9 @@ const NotificationToast: React.FC = () => {
             <p className="text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap">{notification.message}</p>
             <button 
               onClick={clearNotification} 
-              className="w-5 h-5 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20 transition-colors"
+              className="w-6 h-6 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20 transition-colors"
             >
-              <X className="w-3 h-3" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         </motion.div>

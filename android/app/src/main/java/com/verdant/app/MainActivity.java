@@ -1,0 +1,5 @@
+package com.verdant.app;
+
+import com.getcapacitor.BridgeActivity;
+
+public class MainActivity extends BridgeActivity {}

@@ -7,7 +7,11 @@ import { useSystem, UsageData } from '../context/SystemContext';
 import { Database, Droplets, Sparkles, HelpCircle, X, Cpu, Activity, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export const PlantTelemetry: React.FC = () => {
+interface PlantTelemetryProps {
+    mode?: 'full' | 'stats' | 'usage';
+}
+
+export const PlantTelemetry: React.FC<PlantTelemetryProps> = ({ mode = 'full' }) => {
     const { plants } = usePlants();
     const { t } = useLanguage();
     const { user } = useAuth();
@@ -58,85 +62,87 @@ export const PlantTelemetry: React.FC = () => {
 
     return (
         <div className="px-6 md:px-10 mb-8">
-            <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 rounded-[32px] p-6 grid grid-cols-1 md:grid-cols-2 gap-6 shadow-xl dark:shadow-2xl relative overflow-hidden">
-                {/* Decorative Grid Background */}
-                <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
-                
-                <div className="relative z-10 flex flex-col gap-1">
-                    <div className="flex items-center gap-2 mb-2">
-                        <Database className="w-3 h-3 text-verdant" />
-                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t('lbl_specimen_count')}</span>
-                    </div>
-                    <div className="flex items-baseline gap-1">
-                        <span className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{stats.total}</span>
-                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">{t('lbl_units')}</span>
-                    </div>
-                    <div className="mt-2 h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-verdant w-full opacity-50" />
-                    </div>
-                </div>
-
-                <div className="relative z-10 flex flex-col gap-1">
-                    <div className="flex items-center gap-2 mb-2">
-                        <Droplets className="w-3 h-3 text-blue-500 dark:text-blue-400" />
-                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t('lbl_hydration_index')}</span>
-                    </div>
-                    <div className="flex items-baseline gap-1">
-                        <span className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{stats.hydrationLevel}</span>
-                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">%</span>
-                    </div>
-                    <div className="mt-2 h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                        <div 
-                            className="h-full bg-blue-500 dark:bg-blue-400 transition-all duration-1000" 
-                            style={{ width: `${stats.hydrationLevel}%` }} 
-                        />
-                    </div>
-                </div>
-
-                {isLocalAiSupported && (
-                    <div className="md:col-span-2 pt-4 mt-2 border-t border-gray-50 dark:border-white/5 flex flex-col gap-3">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <Sparkles className={`w-3 h-3 ${isLocalAiEnabled ? 'text-amber-500 animate-pulse' : 'text-slate-300'}`} />
-                                <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                                    {isLocalAiLoading ? 'AI Core Initializing...' : isLocalAiEnabled ? 'Local AI Active' : 'Local AI Standby'}
-                                </span>
-                                {!isLocalAiEnabled && localAiOrigin === 'WINDOW_AI' && (
-                                    <button 
-                                        onClick={() => setShowHelp(true)}
-                                        className="p-1 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-colors"
-                                    >
-                                        <HelpCircle className="w-3 h-3 text-amber-500" />
-                                    </button>
-                                )}
-                            </div>
-                            <span className="text-[7px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-tighter">
-                                {localAiOrigin === 'WINDOW_AI' ? 'Tensor G4 / Gemini Nano' : 'WebGPU / A18 Pro'}
-                            </span>
+            {(mode === 'full' || mode === 'stats') && (
+                <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 rounded-[32px] p-6 grid grid-cols-1 md:grid-cols-2 gap-6 shadow-xl dark:shadow-2xl relative overflow-hidden">
+                    {/* Decorative Grid Background */}
+                    <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+                    
+                    <div className="relative z-10 flex flex-col gap-1">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Database className="w-4 h-4 text-verdant" />
+                            <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t('lbl_specimen_count')}</span>
                         </div>
-                        
-                        {isLocalAiLoading && (
-                            <div className="space-y-1.5 px-1">
-                                <div className="h-1 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
-                                    <motion.div 
-                                        className="h-full bg-amber-500" 
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${localAiProgress * 100}%` }}
-                                    />
-                                </div>
-                                <p className="text-[6px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Syncing Weight Gradients: {Math.round(localAiProgress * 100)}%</p>
-                            </div>
-                        )}
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{stats.total}</span>
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">{t('lbl_units')}</span>
+                        </div>
+                        <div className="mt-2 h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                            <div className="h-full bg-verdant w-full opacity-50" />
+                        </div>
                     </div>
-                )}
-            </div>
+
+                    <div className="relative z-10 flex flex-col gap-1">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Droplets className="w-4 h-4 text-blue-500 dark:text-blue-400" />
+                            <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t('lbl_hydration_index')}</span>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{stats.hydrationLevel}</span>
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">%</span>
+                        </div>
+                        <div className="mt-2 h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                            <div 
+                                className="h-full bg-blue-500 dark:bg-blue-400 transition-all duration-1000" 
+                                style={{ width: `${stats.hydrationLevel}%` }} 
+                            />
+                        </div>
+                    </div>
+
+                    {isLocalAiSupported && (
+                        <div className="md:col-span-2 pt-4 mt-2 border-t border-gray-50 dark:border-white/5 flex flex-col gap-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Sparkles className={`w-4 h-4 ${isLocalAiEnabled ? 'text-amber-500 animate-pulse' : 'text-slate-300'}`} />
+                                    <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                        {isLocalAiLoading ? 'AI Core Initializing...' : isLocalAiEnabled ? 'Local AI Active' : 'Local AI Standby'}
+                                    </span>
+                                    {!isLocalAiEnabled && localAiOrigin === 'WINDOW_AI' && (
+                                        <button 
+                                            onClick={() => setShowHelp(true)}
+                                            className="p-1 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-colors"
+                                        >
+                                            <HelpCircle className="w-4 h-4 text-amber-500" />
+                                        </button>
+                                    )}
+                                </div>
+                                <span className="text-[7px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-tighter">
+                                    {localAiOrigin === 'WINDOW_AI' ? 'Tensor G4 / Gemini Nano' : 'Tensor G4 / WebGPU Gemma'}
+                                </span>
+                            </div>
+                            
+                            {isLocalAiLoading && (
+                                <div className="space-y-1.5 px-1">
+                                    <div className="h-1 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                        <motion.div 
+                                            className="h-full bg-amber-500" 
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${localAiProgress * 100}%` }}
+                                        />
+                                    </div>
+                                    <p className="text-[6px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Syncing Weight Gradients: {Math.round(localAiProgress * 100)}%</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* AI Usage Dashboard Overlay (Simplified) */}
-            {usage && (
+            {(mode === 'full' || mode === 'usage') && usage && (
                 <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4 px-2">
                     <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-gray-100 dark:border-white/5 flex flex-col gap-1">
                         <div className="flex items-center gap-2 mb-1">
-                            <Zap className="w-3 h-3 text-amber-500" />
+                            <Zap className="w-4 h-4 text-amber-500" />
                             <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Local Tokens</span>
                         </div>
                         <span className="text-xl font-black text-slate-900 dark:text-white tracking-tighter">
@@ -152,7 +158,7 @@ export const PlantTelemetry: React.FC = () => {
 
                     <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-gray-100 dark:border-white/5 flex flex-col gap-1">
                         <div className="flex items-center gap-2 mb-1">
-                            <Activity className="w-3 h-3 text-verdant" />
+                            <Activity className="w-4 h-4 text-verdant" />
                             <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Cloud Tokens</span>
                         </div>
                         <span className="text-xl font-black text-slate-900 dark:text-white tracking-tighter">
@@ -168,7 +174,7 @@ export const PlantTelemetry: React.FC = () => {
 
                     <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-gray-100 dark:border-white/5 flex flex-col gap-1">
                         <div className="flex items-center gap-2 mb-1">
-                            <Cpu className="w-3 h-3 text-purple-500" />
+                            <Cpu className="w-4 h-4 text-purple-500" />
                             <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">System Load</span>
                         </div>
                         <span className="text-xl font-black text-slate-900 dark:text-white tracking-tighter">
@@ -183,7 +189,7 @@ export const PlantTelemetry: React.FC = () => {
 
                     <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-gray-100 dark:border-white/5 flex flex-col gap-1">
                         <div className="flex items-center gap-2 mb-1">
-                            <Database className="w-3 h-3 text-blue-500" />
+                            <Database className="w-4 h-4 text-blue-500" />
                             <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">API Index</span>
                         </div>
                         <span className="text-xl font-black text-slate-900 dark:text-white tracking-tighter">
@@ -206,28 +212,34 @@ export const PlantTelemetry: React.FC = () => {
                             onClick={() => setShowHelp(false)}
                             className="absolute top-4 right-4 p-2 text-amber-900 dark:text-amber-400 opacity-50 hover:opacity-100"
                         >
-                            <X className="w-4 h-4" />
+                            <X className="w-6 h-6" />
                         </button>
-                        <h3 className="text-[10px] font-black text-amber-900 dark:text-amber-400 uppercase tracking-widest mb-3">Local AI Activation Guide (Android/Pixel)</h3>
+                        <h3 className="text-[10px] font-black text-amber-900 dark:text-amber-400 uppercase tracking-widest mb-3">Local AI Activation Guide (Android/Pixel 9)</h3>
                         <p className="text-xs text-amber-800/80 dark:text-amber-400/80 leading-relaxed mb-4">
-                            Your device has the necessary hardware, but Google Chrome requires a manual flag enabled for experimental on-device AI.
+                            Your Pixel 9 Pro has the hardware, but the <strong>Prompt API</strong> for Web (Chrome) is separate from the ML Kit API for Native apps. It is currently in an <em>Early Preview Program</em>.
                         </p>
                         <div className="space-y-3">
                             <div className="flex gap-3 items-start">
                                 <div className="w-5 h-5 bg-amber-200 dark:bg-amber-500/20 rounded-full flex items-center justify-center shrink-0 text-[10px] font-black text-amber-900">1</div>
-                                <p className="text-[10px] text-amber-900/60 dark:text-amber-400/60 font-bold uppercase">Open Chrome and navigate to: <code className="bg-white/50 dark:bg-black/20 px-2 py-1 rounded">chrome://flags</code></p>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] text-amber-900/60 dark:text-amber-400/60 font-bold uppercase">Install <code className="bg-white/50 dark:bg-black/20 px-2 py-1 rounded">Chrome Dev</code> or <code className="bg-white/50 dark:bg-black/20 px-2 py-1 rounded">Chrome Canary</code></p>
+                                    <p className="text-[8px] opacity-70 italic">Flags are often hidden in the standard (Stable) Chrome app on Android.</p>
+                                </div>
                             </div>
                             <div className="flex gap-3 items-start">
                                 <div className="w-5 h-5 bg-amber-200 dark:bg-amber-500/20 rounded-full flex items-center justify-center shrink-0 text-[10px] font-black text-amber-900">2</div>
-                                <p className="text-[10px] text-amber-900/60 dark:text-amber-400/60 font-bold uppercase">Search for: <code className="bg-white/50 dark:bg-black/20 px-2 py-1 rounded">Optimization Guide on-device model</code></p>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] text-amber-900/60 dark:text-amber-400/60 font-bold uppercase">Join the <span className="underline">Chrome Built-in AI Early Preview Program</span></p>
+                                    <p className="text-[8px] opacity-70 italic">Access is granted per-account. Ensure you are signed in to the Beta program.</p>
+                                </div>
                             </div>
                             <div className="flex gap-3 items-start">
                                 <div className="w-5 h-5 bg-amber-200 dark:bg-amber-500/20 rounded-full flex items-center justify-center shrink-0 text-[10px] font-black text-amber-900">3</div>
-                                <p className="text-[10px] text-amber-900/60 dark:text-amber-400/60 font-bold uppercase">Set to: <span className="text-amber-900 dark:text-amber-200">Enabled BypassPrefRequirement</span></p>
+                                <p className="text-[10px] text-amber-900/60 dark:text-amber-400/60 font-bold uppercase">Enable <code className="bg-white/50 dark:bg-black/20 px-2 py-1 rounded">Language Model API</code> and <code className="bg-white/50 dark:bg-black/20 px-2 py-1 rounded">Optimization Guide on-device model</code> in flags.</p>
                             </div>
                             <div className="flex gap-3 items-start">
                                 <div className="w-5 h-5 bg-amber-200 dark:bg-amber-500/20 rounded-full flex items-center justify-center shrink-0 text-[10px] font-black text-amber-900">4</div>
-                                <p className="text-[10px] text-amber-900/60 dark:text-amber-400/60 font-bold uppercase">Relaunch Chrome to apply changes.</p>
+                                <p className="text-[10px] text-amber-900/60 dark:text-amber-400/60 font-bold uppercase">Update <strong className="text-amber-900 dark:text-amber-200 underline">AICore</strong> in Google Play Store &amp; relaunch Chrome twice.</p>
                             </div>
                         </div>
                     </motion.div>

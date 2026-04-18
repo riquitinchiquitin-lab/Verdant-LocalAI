@@ -9,13 +9,23 @@ export interface LocalAiCapabilities {
 
 // Global engine instance to persist across calls - using any to avoid top-level heavy import
 let webLlmEngine: any = null;
-const SELECTED_MODEL = "Llama-3-8B-Instruct-v0.1-q4f32_1-MLC-1k"; // Optimized small context for fast browser usage
+const SELECTED_MODEL = "gemma-2b-it-q4f16_1-MLC"; // Mobile-optimized for Pixel Tensor chips
 
 export const checkLocalAiSupport = async (): Promise<LocalAiCapabilities> => {
   // 1. Check for window.ai with robust existence check
   if (typeof window !== 'undefined' && 'ai' in window) {
     try {
       const ai = (window as any).ai;
+      
+      // 1a. Latest Chrome "Language Model" API
+      if (ai.languageModel && typeof ai.languageModel.capabilities === 'function') {
+        const caps = await ai.languageModel.capabilities();
+        if (caps.available !== 'no') {
+          return { isSupported: true, origin: 'WINDOW_AI' };
+        }
+      }
+
+      // 1b. Legacy "Assistant/Text Session" API
       if (ai && typeof ai.canCreateTextSession === 'function') {
         const canCreate = await ai.canCreateTextSession();
         if (canCreate === 'readily' || canCreate === 'after-download') {
@@ -75,14 +85,31 @@ export const runLocalAiPrompt = async (prompt: string, systemPrompt?: string): P
   // 1. Prefer window.ai if available
   if (typeof window !== 'undefined' && 'ai' in window) {
     try {
-      const session = await (window as any).ai.createTextSession({
-        systemPrompt: systemPrompt || "You are a botanical expert assistant."
-      });
-      const result = await session.prompt(prompt);
-      const totalTokens = estimateTokens(prompt) + estimateTokens(result) + estimateTokens(systemPrompt || "");
-      trackUsage('local_ai', totalTokens);
-      session.destroy();
-      return result;
+      const ai = (window as any).ai;
+      let result = "";
+      
+      // Latest API
+      if (ai.languageModel && typeof ai.languageModel.create === 'function') {
+        const session = await ai.languageModel.create({
+          systemPrompt: systemPrompt || "You are a botanical expert assistant."
+        });
+        result = await session.prompt(prompt);
+        session.destroy();
+      } 
+      // Legacy API
+      else if (typeof ai.createTextSession === 'function') {
+        const session = await ai.createTextSession({
+          systemPrompt: systemPrompt || "You are a botanical expert assistant."
+        });
+        result = await session.prompt(prompt);
+        session.destroy();
+      }
+
+      if (result) {
+        const totalTokens = estimateTokens(prompt) + estimateTokens(result) + estimateTokens(systemPrompt || "");
+        trackUsage('local_ai', totalTokens);
+        return result;
+      }
     } catch (e) {
       console.warn("window.ai failed, attempting WebGPU...", e);
     }

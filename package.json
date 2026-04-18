@@ -32,6 +32,7 @@
     "multer": "^2.1.1",
     "node-fetch": "^3.3.2",
     "pg": "^8.18.0",
+    "qrcode.react": "^4.2.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.13.0",
@@ -39,7 +40,7 @@
     "sqlite3": "^5.1.7",
     "tailwind-merge": "^3.5.0",
     "tsx": "^4.21.0",
-    "vite-plugin-pwa": "^1.2.0",
+    "vite-plugin-pwa": "^0.21.1",
     "web-push": "^3.6.7",
     "ws": "^8.19.0",
     "xlsx": "^0.18.5"
@@ -49,13 +50,13 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/ws": "^8.18.1",
-    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.27",
     "postcss": "^8.5.8",
     "tailwindcss": "^4.2.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.0.0",
-    "vite": "^8.0.3"
+    "vite": "^6.0.7"
   },
   "scripts": {
     "start": "tsx server.ts",

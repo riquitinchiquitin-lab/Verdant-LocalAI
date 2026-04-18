@@ -9,6 +9,8 @@ import { House, User, Plant } from '../types';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { SystemTelemetry } from '../components/SystemTelemetry';
+import { PlantTelemetry } from '../components/PlantTelemetry';
+import { MobileBridge } from '../components/MobileBridge';
 import { ConfirmationDialog } from '../components/ui/ConfirmationDialog';
 import { fetchWithAuth } from '../services/api'; // Mandatory import for handshake
 import { generateSecure50CharKey } from '../services/security';
@@ -21,7 +23,7 @@ export const AdminView: React.FC = () => {
   const { showNotification, fetchSystemLogs } = useSystem();
   const { houses, plants, updateHouse, deleteHouse, addHouse, updatePlant, deleteAllLogs, deleteLogsByDay } = usePlants();
   const { users, addUser, updateUser, deleteUser, removeUserPermanently } = usePersonnel();
-  const [activeTab, setActiveTab] = useState<'HOUSES' | 'PERSONNEL' | 'PLANTS' | 'DATABASE' | 'SECURITY' | 'LOGS'>('HOUSES');
+  const [activeTab, setActiveTab] = useState<'HOUSES' | 'PERSONNEL' | 'MANAGEMENT' | 'PLANTS' | 'DATABASE' | 'SECURITY' | 'MOBILE' | 'LOGS'>('HOUSES');
   const [isRestoring, setIsRestoring] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [logs, setLogs] = useState<SystemLog[]>([]);
@@ -100,10 +102,10 @@ export const AdminView: React.FC = () => {
   }, [users, isOwner, isDirector, isLeadHand, user]);
 
   const availableTabs = useMemo(() => {
-    const tabs: ('HOUSES' | 'PERSONNEL' | 'PLANTS' | 'DATABASE' | 'SECURITY' | 'LOGS')[] = ['HOUSES', 'PERSONNEL'];
+    const tabs: ('HOUSES' | 'PERSONNEL' | 'MANAGEMENT' | 'PLANTS' | 'DATABASE' | 'SECURITY' | 'MOBILE' | 'LOGS')[] = ['HOUSES', 'PERSONNEL', 'MANAGEMENT'];
     if (isOwner || isDirector) {
-      tabs.splice(2, 0, 'PLANTS');
-      tabs.push('DATABASE', 'SECURITY', 'LOGS');
+      tabs.splice(3, 0, 'PLANTS');
+      tabs.push('DATABASE', 'SECURITY', 'MOBILE', 'LOGS');
     }
     return tabs;
   }, [isOwner, isDirector]);
@@ -782,7 +784,7 @@ export const AdminView: React.FC = () => {
 
         <h1 className="text-5xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">{t('menu_admin')}</h1>
         
-        <SystemTelemetry />
+        <SystemTelemetry showUsage={false} />
 
         <div {...tabsScroll.props} className={`flex gap-x-10 border-b border-slate-200 dark:border-slate-800 pb-0.5 whitespace-nowrap scroll-smooth ${tabsScroll.props.className}`}>
             {availableTabs.map(tab => (
@@ -791,6 +793,19 @@ export const AdminView: React.FC = () => {
                 </button>
             ))}
         </div>
+        {activeTab === 'MANAGEMENT' && (
+            <div className="space-y-12">
+                <div className="space-y-4">
+                    <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-verdant border-l-2 border-verdant pl-4 mb-8">On-Device & Cloud AI Usage</h2>
+                    <PlantTelemetry mode="usage" />
+                </div>
+                
+                <div className="space-y-4">
+                    <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500 border-l-2 border-blue-500 pl-4 mb-8">External API Quotas</h2>
+                    <SystemTelemetry showUsage={true} />
+                </div>
+            </div>
+        )}
         {activeTab === 'HOUSES' && (
             <div className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -958,6 +973,17 @@ export const AdminView: React.FC = () => {
                     </div>
                 </div>
                 */}
+            </div>
+        )}
+        {activeTab === 'MOBILE' && (
+            <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="flex flex-col gap-2 text-slate-900 dark:text-white">
+                    <h2 className="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-none">
+                        Mobile <span className="text-verdant">Bridge</span>
+                    </h2>
+                    <p className="text-xs md:text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Native Botanical Synchronization Protocol</p>
+                </div>
+                <MobileBridge />
             </div>
         )}
         {activeTab === 'LOGS' && (

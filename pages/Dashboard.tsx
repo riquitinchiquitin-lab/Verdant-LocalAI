@@ -231,7 +231,7 @@ export const Dashboard: React.FC = () => {
             </div>
         </div>
 
-        <PlantTelemetry />
+        <PlantTelemetry mode="stats" />
 
         <motion.div 
           variants={containerVariants}

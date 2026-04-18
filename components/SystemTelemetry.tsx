@@ -32,7 +32,11 @@ const API_LIMITS: Record<string, number> = {
     opb: 100
 };
 
-export const SystemTelemetry: React.FC = () => {
+interface SystemTelemetryProps {
+    showUsage?: boolean;
+}
+
+export const SystemTelemetry: React.FC<SystemTelemetryProps> = ({ showUsage = true }) => {
     const { isSynced, plants, tasks, houses } = usePlants();
     const { t } = useLanguage();
     const { token, user } = useAuth();
@@ -115,7 +119,7 @@ export const SystemTelemetry: React.FC = () => {
                 
                 <div className="relative z-10 flex flex-col gap-1">
                     <div className="flex items-center gap-2 mb-2">
-                        <Activity className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
+                        <Activity className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
                         <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t('lbl_uplink_status')}</span>
                     </div>
                     <div className="flex items-baseline gap-1">
@@ -131,7 +135,7 @@ export const SystemTelemetry: React.FC = () => {
 
                 <div className="relative z-10 flex flex-col gap-1">
                     <div className="flex items-center gap-2 mb-2">
-                        <Cpu className="w-3 h-3 text-purple-500 dark:text-purple-400" />
+                        <Cpu className="w-4 h-4 text-purple-500 dark:text-purple-400" />
                         <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t('lbl_system_load')}</span>
                     </div>
                     <div className="flex items-baseline gap-1">
@@ -150,7 +154,7 @@ export const SystemTelemetry: React.FC = () => {
 
                 <div className="relative z-10 flex flex-col gap-1">
                     <div className="flex items-center gap-2 mb-2">
-                        <Database className="w-3 h-3 text-blue-500 dark:text-blue-400" />
+                        <Database className="w-4 h-4 text-blue-500 dark:text-blue-400" />
                         <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t('lbl_database_size')}</span>
                     </div>
                     <div className="flex items-baseline gap-1">
@@ -161,49 +165,51 @@ export const SystemTelemetry: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="relative z-10 flex flex-col gap-1">
-                    <div className="flex items-center gap-2 mb-2">
-                        <Key className="w-3 h-3 text-amber-500 dark:text-amber-400" />
-                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t('lbl_api_usage')}</span>
-                    </div>
-                    <div className="flex items-baseline gap-1">
-                        <span className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{stats.apiUsage}</span>
-                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest ml-1">DAILY HITS</span>
-                    </div>
-                    {apiUsage && apiUsage.gemini_tokens > 0 && (
-                        <div className="flex items-center gap-1 mt-1">
-                            <span className="text-[9px] font-black text-amber-500 uppercase tracking-tight">Gemini:</span>
-                            <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400">{(apiUsage.gemini_tokens / 1000).toFixed(1)}k tokens</span>
+                {showUsage && (
+                    <div className="relative z-10 flex flex-col gap-1">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Key className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+                            <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t('lbl_api_usage')}</span>
                         </div>
-                    )}
-                    <div className="mt-2 flex gap-1 items-end h-4">
-                        {apiUsage && Object.entries(apiUsage).filter(([key]) => key.endsWith('_count')).map(([key, value], i) => {
-                            const apiKey = key.replace('_count', '');
-                            const limit = API_LIMITS[apiKey] || 1000;
-                            const height = Math.min(100, ((value as number) / limit) * 100);
-                            return (
-                                <div 
-                                    key={key} 
-                                    className="w-full bg-amber-500/20 rounded-t-sm relative group"
-                                    style={{ height: `${Math.max(10, height)}%` }}
-                                >
-                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-slate-800 text-white text-[8px] px-2 py-1 rounded whitespace-nowrap z-20 shadow-xl border border-white/10">
-                                        <div className="font-black mb-0.5">{t(`api_${apiKey}`)}</div>
-                                        <div className="flex items-center gap-1">
-                                            <span className="text-amber-400">{value as number}</span>
-                                            <span className="opacity-40">/</span>
-                                            <span>{limit}</span>
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{stats.apiUsage}</span>
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest ml-1">DAILY HITS</span>
+                        </div>
+                        {apiUsage && apiUsage.gemini_tokens > 0 && (
+                            <div className="flex items-center gap-1 mt-1">
+                                <span className="text-[9px] font-black text-amber-500 uppercase tracking-tight">Gemini:</span>
+                                <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400">{(apiUsage.gemini_tokens / 1000).toFixed(1)}k tokens</span>
+                            </div>
+                        )}
+                        <div className="mt-2 flex gap-1 items-end h-4">
+                            {apiUsage && Object.entries(apiUsage).filter(([key]) => key.endsWith('_count')).map(([key, value], i) => {
+                                const apiKey = key.replace('_count', '');
+                                const limit = API_LIMITS[apiKey] || 1000;
+                                const height = Math.min(100, ((value as number) / limit) * 100);
+                                return (
+                                    <div 
+                                        key={key} 
+                                        className="w-full bg-amber-500/20 rounded-t-sm relative group"
+                                        style={{ height: `${Math.max(10, height)}%` }}
+                                    >
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-slate-800 text-white text-[8px] px-2 py-1 rounded whitespace-nowrap z-20 shadow-xl border border-white/10">
+                                            <div className="font-black mb-0.5">{t(`api_${apiKey}`)}</div>
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-amber-400">{value as number}</span>
+                                                <span className="opacity-40">/</span>
+                                                <span>{limit}</span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            );
-                        })}
+                                );
+                            })}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 <div className="relative z-10 flex flex-col gap-1 lg:col-span-full xl:col-span-1">
                     <div className="flex items-center gap-2 mb-2">
-                        <Brain className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
+                        <Brain className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
                         <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">On-Device AI</span>
                     </div>
                     <div className="flex items-center gap-3">
@@ -215,8 +221,8 @@ export const SystemTelemetry: React.FC = () => {
                                 <div className="text-[8px] font-bold text-slate-400 border-b border-dashed border-slate-400 cursor-help">Chrome Prompt API Instructions</div>
                                 <div className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-slate-900 text-white text-[10px] rounded-xl hidden group-hover:block shadow-2xl border border-white/10 z-50">
                                     <p className="font-black text-emerald-400 mb-1 leading-tight uppercase">Requirements:</p>
-                                    <p className="opacity-70 leading-relaxed">
-                                        You must have the <strong>"Prompt API"</strong> flag enabled in <code>chrome://flags</code>. This allows for near-instant botanical recognition using Gemini Nano.
+                                    <p className="opacity-70 leading-relaxed text-[9px]">
+                                        Enable <strong>"Prompt API with Gemini Nano"</strong> and <strong>"Optimization Guide on-device model"</strong> (set to BypassPref) in <code>chrome://flags</code>.
                                     </p>
                                 </div>
                             </div>
@@ -232,7 +238,7 @@ export const SystemTelemetry: React.FC = () => {
             <div className="hidden lg:block bg-white dark:bg-slate-950 border border-gray-100 dark:border-slate-800 rounded-[32px] p-6 shadow-xl dark:shadow-2xl">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-emerald-500" />
+                        <Activity className="w-5 h-5 text-emerald-500" />
                         <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Live System Feed</h3>
                     </div>
                     <div className="flex items-center gap-2">

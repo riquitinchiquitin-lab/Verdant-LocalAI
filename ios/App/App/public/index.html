@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Verdant | Global v1.0</title>
+    
+    <!-- Mobile Full Screen / PWA Standalone Mode -->
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#020617">
+    <meta name="apple-mobile-web-app-title" content="Verdant">
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+    <link rel="icon" type="image/svg+xml" href="./logo.svg">
+    <link rel="manifest" href="./manifest.json">
+    
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+      (function() {
+        try {
+          const savedTheme = localStorage.getItem('verdant-theme');
+          if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {
+          console.warn('Verdant: LocalStorage theme detection restricted.');
+        }
+      })();
+    </script>
+  <script type="module" crossorigin src="./assets/main-CJvZN07J.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/main-goucSYMJ.css">
+<link rel="manifest" href="./manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="./registerSW.js"></script></head>
+  <body class="bg-white text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300 no-scrollbar">
+    <div id="root"></div>
+    <!-- Environment Configuration -->
+    <script type="module" src="./env-config.js" onerror="console.warn('Verdant: env-config.js load fault.')"></script>
+    <!-- Vite Entry Point -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js').then(registration => {
+            console.log('SW registered: ', registration);
+          }).catch(registrationError => {
+            console.log('SW registration failed: ', registrationError);
+          });
+        });
+      }
+    </script>
+  </body>
+</html>
