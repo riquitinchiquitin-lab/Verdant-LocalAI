@@ -4,7 +4,7 @@ import { trackUsage } from './usageService';
 export interface LocalAiCapabilities {
   isSupported: boolean;
   origin: 'WINDOW_AI' | 'WEBGPU' | 'NONE';
-  status?: string;
+  status: 'readily' | 'after-download' | 'no' | 'Hardware Ready' | 'NONE';
 }
 
 // Global engine instance to persist across calls - using any to avoid top-level heavy import
@@ -21,7 +21,7 @@ export const checkLocalAiSupport = async (): Promise<LocalAiCapabilities> => {
       if (ai.languageModel && typeof ai.languageModel.capabilities === 'function') {
         const caps = await ai.languageModel.capabilities();
         if (caps.available !== 'no') {
-          return { isSupported: true, origin: 'WINDOW_AI' };
+          return { isSupported: true, origin: 'WINDOW_AI', status: caps.available };
         }
       }
 
@@ -29,8 +29,16 @@ export const checkLocalAiSupport = async (): Promise<LocalAiCapabilities> => {
       if (ai && typeof ai.canCreateTextSession === 'function') {
         const canCreate = await ai.canCreateTextSession();
         if (canCreate === 'readily' || canCreate === 'after-download') {
-          return { isSupported: true, origin: 'WINDOW_AI' };
+          return { isSupported: true, origin: 'WINDOW_AI', status: canCreate };
         }
+      }
+
+      // 1c. Assistant API (sometimes aliased)
+      if (ai.assistant && typeof ai.assistant.capabilities === 'function') {
+         const caps = await ai.assistant.capabilities();
+         if (caps.available !== 'no') {
+             return { isSupported: true, origin: 'WINDOW_AI', status: caps.available };
+         }
       }
     } catch (e) {
       console.warn("Verdant AI Probe Fault:", e);
@@ -44,7 +52,7 @@ export const checkLocalAiSupport = async (): Promise<LocalAiCapabilities> => {
       const adapterPromise = (navigator as any).gpu.requestAdapter();
       const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("WebGPU Timeout")), 2000));
       
-      const adapter = await Promise.race([adapterPromise, timeoutPromise]);
+      const adapter = await Promise.race([adapterPromise, timeoutPromise]) as any;
       if (adapter) {
         return { isSupported: true, origin: 'WEBGPU', status: 'Hardware Ready' };
       }
@@ -53,7 +61,7 @@ export const checkLocalAiSupport = async (): Promise<LocalAiCapabilities> => {
     }
   }
 
-  return { isSupported: false, origin: 'NONE' };
+  return { isSupported: false, origin: 'NONE', status: 'NONE' };
 };
 
 export const initWebLlm = async (onProgress?: (progress: number) => void): Promise<void> => {
@@ -105,11 +113,12 @@ export const runLocalAiPrompt = async (prompt: string, systemPrompt?: string): P
         session.destroy();
       }
 
-      if (result) {
-        const totalTokens = estimateTokens(prompt) + estimateTokens(result) + estimateTokens(systemPrompt || "");
-        trackUsage('local_ai', totalTokens);
-        return result;
-      }
+  if (result) {
+    const totalTokens = estimateTokens(prompt) + estimateTokens(result) + estimateTokens(systemPrompt || "");
+    console.info(`[LOCAL_AI] window.ai Success | Tokens: ${totalTokens}`);
+    trackUsage('local_ai', totalTokens);
+    return result;
+  }
     } catch (e) {
       console.warn("window.ai failed, attempting WebGPU...", e);
     }
@@ -131,7 +140,9 @@ export const runLocalAiPrompt = async (prompt: string, systemPrompt?: string): P
     });
     
     const result = reply.choices[0].message.content || "";
-    trackUsage('local_ai', reply.usage?.total_tokens || estimateTokens(result));
+    const totalTokens = reply.usage?.total_tokens || estimateTokens(result);
+    console.info(`[LOCAL_AI] WebGPU Success | Tokens: ${totalTokens}`);
+    trackUsage('local_ai', totalTokens);
     return result;
   }
 
@@ -194,4 +205,10 @@ export const harmonizePlantDataLocal = async (scientificName: string, rawData: a
     console.error("Local harmonization JSON parse fault:", e);
     return null;
   }
+};
+
+export const runEnrichmentLocal = async (itemName: string, currentDetails: string): Promise<string> => {
+  const prompt = `ITEM: ${itemName}\nCURRENT DETAILS: ${currentDetails}\n\nEnrich this botanical product description with technical usage tips and safety precautions. Keep it concise but professional.`;
+  const systemPrompt = "You are a Botanical Product Expert. Provide high-quality technical enrichments for gardening products.";
+  return await runLocalAiPrompt(prompt, systemPrompt);
 };

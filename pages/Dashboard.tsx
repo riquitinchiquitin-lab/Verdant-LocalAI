@@ -20,7 +20,7 @@ import { generateUUID } from '../services/crypto';
 
 export const Dashboard: React.FC = () => {
   const { user, can } = useAuth();
-  const { showNotification } = useSystem();
+  const { showNotification, isLocalAiEnabled } = useSystem();
   const navigate = useNavigate();
   const { plants, addPlant, restoreDemoData, houses, getEffectiveApiKey, searchFilter, refreshAllData, isSynced } = usePlants();
   const { t, lv } = useLanguage();
@@ -94,12 +94,12 @@ export const Dashboard: React.FC = () => {
     if (parts.length >= 3) {
       const [sourceHouse, sourceId, species, family] = parts;
       
-      setIsSyncing(true);
-      showNotification("SYNCING SPECIMEN...", "INFO");
-      try {
-        const details = await generatePlantDetails(species, undefined, undefined, getEffectiveApiKey());
-        
-        const syncedPlant: Plant = {
+    setIsSyncing(true);
+    showNotification("SYNCING SPECIMEN...", "INFO");
+    try {
+      const details = await generatePlantDetails(species, undefined, undefined, getEffectiveApiKey(), isLocalAiEnabled);
+      
+      const syncedPlant: Plant = {
           ...details,
           id: `p-synced-${generateUUID()}`,
           species: species,
@@ -172,12 +172,6 @@ export const Dashboard: React.FC = () => {
                       <h1 className="text-6xl md:text-8xl font-black text-gray-900 dark:text-white tracking-tighter uppercase leading-[0.8]">
                           {t('app_name')} <span className="text-verdant opacity-50">/</span>
                       </h1>
-                      <div className="flex items-center gap-3 mt-2">
-                        <span className="h-[2px] w-8 bg-slate-200 dark:bg-slate-800" />
-                        <p className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em]">
-                          {user?.house?.name?.en || 'UNATTRIBUTED_SECTOR'} // {user?.houseId?.slice(0, 8).toUpperCase() || 'CORE'}
-                        </p>
-                      </div>
                     </div>
                 </div>
 

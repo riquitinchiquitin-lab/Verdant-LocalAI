@@ -1,12 +1,19 @@
 
 // VERDANT UPLINK CONFIGURATION
 // Relative path allows the Nginx proxy to handle routing internally via Docker
-export const API_URL = ''; 
+// Fallback to VITE_API_URL for certain deployment scenarios
+export const API_URL = import.meta.env.VITE_API_URL || ''; 
 
-// Authentication - User must provide this via .env on Proxmox host
+// Authentication - User must provide this via .env
 export const getGoogleClientId = (): string => {
-  const id = (window as any)._ENV_?.GOOGLE_CLIENT_ID;
-  if (id === undefined) return 'MISSING_CLIENT_ID';
+  // Check for server-injected environment first (Web/Docker)
+  const windowId = (window as any)._ENV_?.GOOGLE_CLIENT_ID;
+  
+  // Fallback to build-time environment variable (Static Builds)
+  const envId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  
+  const id = windowId || envId;
+  if (!id) return 'MISSING_CLIENT_ID';
   return id;
 };
 

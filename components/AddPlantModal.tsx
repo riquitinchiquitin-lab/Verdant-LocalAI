@@ -459,7 +459,7 @@ export const AddPlantModal: React.FC<AddPlantModalProps> = ({ isOpen, onClose, o
                   setIsBusy(true);
                   setScanMode('PROCESSING');
                   try {
-                    const details = await generatePlantDetails(identifiedPlant.species, undefined, undefined, getEffectiveApiKey());
+                    const details = await generatePlantDetails(identifiedPlant.species, undefined, undefined, getEffectiveApiKey(), isLocalAiEnabled);
                     setIdentifiedPlant(createPlant({
                       ...details,
                       nickname: identifiedPlant.nickname || details.nickname,

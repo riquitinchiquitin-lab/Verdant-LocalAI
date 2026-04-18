@@ -15,7 +15,7 @@ export const PlantTelemetry: React.FC<PlantTelemetryProps> = ({ mode = 'full' })
     const { plants } = usePlants();
     const { t } = useLanguage();
     const { user } = useAuth();
-    const { isLocalAiEnabled, isLocalAiSupported, localAiOrigin, localAiProgress, isLocalAiLoading, fetchUsage } = useSystem();
+    const { isLocalAiEnabled, isLocalAiSupported, localAiOrigin, localAiStatus, localAiProgress, isLocalAiLoading, fetchUsage } = useSystem();
     const [showHelp, setShowHelp] = useState(false);
     const [usage, setUsage] = useState<UsageData | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -104,7 +104,9 @@ export const PlantTelemetry: React.FC<PlantTelemetryProps> = ({ mode = 'full' })
                                 <div className="flex items-center gap-2">
                                     <Sparkles className={`w-4 h-4 ${isLocalAiEnabled ? 'text-amber-500 animate-pulse' : 'text-slate-300'}`} />
                                     <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                                        {isLocalAiLoading ? 'AI Core Initializing...' : isLocalAiEnabled ? 'Local AI Active' : 'Local AI Standby'}
+                                        {isLocalAiLoading ? 'AI Core Initializing...' : 
+                                         localAiStatus === 'after-download' ? 'AI Core: Download Required' :
+                                         isLocalAiEnabled ? 'Local AI Active' : 'Local AI Standby'}
                                     </span>
                                     {!isLocalAiEnabled && localAiOrigin === 'WINDOW_AI' && (
                                         <button 
@@ -152,7 +154,6 @@ export const PlantTelemetry: React.FC<PlantTelemetryProps> = ({ mode = 'full' })
                              <div className="h-1 w-8 bg-amber-500/20 rounded-full overflow-hidden">
                                 <div className="h-full bg-amber-500 w-full" />
                              </div>
-                             <span className="text-[7px] font-bold text-slate-400 dark:text-slate-500 uppercase">{usage.local_ai_count} Calls</span>
                         </div>
                     </div>
 

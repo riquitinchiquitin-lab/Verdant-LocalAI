@@ -1,10 +1,11 @@
 import { API_URL } from '../constants';
+import { storage } from './storage';
 
 export type ApiType = 'gemini' | 'plantnet' | 'trefle' | 'perenual' | 'serper' | 'local_ai';
 
 export const trackUsage = async (type: ApiType, tokens?: number) => {
-  const token = localStorage.getItem('verdant_token');
-  const userStr = localStorage.getItem('verdant_user');
+  const token = storage.get('verdant_token');
+  const userStr = storage.get('verdant_user');
   
   if (!token || !userStr) return;
   

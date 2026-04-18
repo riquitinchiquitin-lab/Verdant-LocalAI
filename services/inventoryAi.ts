@@ -1,9 +1,9 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { getGeminiApiKey } from '../constants';
+import { trackUsage } from './usageService';
+import { runEnrichmentLocal, translateTextLocal } from './LocalAiService';
 
 const TARGET_LANGS = ['en', 'zh', 'ja', 'ko', 'es', 'fr', 'pt', 'de', 'id', 'vi', 'tl'];
-
-import { trackUsage } from './usageService';
 
 export const identifyInventoryItem = async (
   image: string, 
@@ -60,6 +60,9 @@ export const identifyInventoryItem = async (
   `;
 
   try {
+    // Check if local AI is ready for harmonization (to keep logic consistent)
+    const isLocalEnabled = localStorage.getItem('verdant-local-ai') === 'true';
+    
     const response = await callGeminiWithRetry(() => ai.models.generateContent({
       model: model,
       contents: {
@@ -105,6 +108,24 @@ export const identifyInventoryItem = async (
 
     const result = JSON.parse(response.text || "{}");
     onLog?.("Identification & Translation finalized in single pass.", "GEMINI");
+
+    // ENRICHMENT STEP: If local AI is enabled, try to refine the description or instructions locally
+    if (isLocalEnabled && typeof window !== 'undefined' && 'ai' in window) {
+      try {
+        const localEnriched = await runEnrichmentLocal(result.name?.en || result.model || 'Item', result.description?.en || '');
+        if (localEnriched) {
+            console.log("[INVENTORY] Local enrichment successful");
+            // Translate the enriched part locally too
+            const localTrans = await translateTextLocal(localEnriched, TARGET_LANGS);
+            if (localTrans && Object.keys(localTrans).length > 0) {
+                result.description = { ...result.description, ...localTrans };
+                onLog?.("Local AI Enrichment Applied", "LOCAL_AI");
+            }
+        }
+      } catch (e) {
+          console.warn("[INVENTORY] Local enrichment failed:", e);
+      }
+    }
 
     result.images = [image];
     return result;

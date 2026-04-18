@@ -105,6 +105,7 @@ const staticTranslations: Record<string, Record<string, string>> = {
     lbl_event: "Event",
     lbl_details: "Details",
     lbl_level: "Level",
+    lbl_type: "Type",
     lbl_error: "Error",
     lbl_warn: "Warning",
     lbl_info: "Info",

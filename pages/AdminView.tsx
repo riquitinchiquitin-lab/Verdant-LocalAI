@@ -10,7 +10,6 @@ import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { SystemTelemetry } from '../components/SystemTelemetry';
 import { PlantTelemetry } from '../components/PlantTelemetry';
-import { MobileBridge } from '../components/MobileBridge';
 import { ConfirmationDialog } from '../components/ui/ConfirmationDialog';
 import { fetchWithAuth } from '../services/api'; // Mandatory import for handshake
 import { generateSecure50CharKey } from '../services/security';
@@ -23,7 +22,7 @@ export const AdminView: React.FC = () => {
   const { showNotification, fetchSystemLogs } = useSystem();
   const { houses, plants, updateHouse, deleteHouse, addHouse, updatePlant, deleteAllLogs, deleteLogsByDay } = usePlants();
   const { users, addUser, updateUser, deleteUser, removeUserPermanently } = usePersonnel();
-  const [activeTab, setActiveTab] = useState<'HOUSES' | 'PERSONNEL' | 'MANAGEMENT' | 'PLANTS' | 'DATABASE' | 'SECURITY' | 'MOBILE' | 'LOGS'>('HOUSES');
+  const [activeTab, setActiveTab] = useState<'HOUSES' | 'PERSONNEL' | 'MANAGEMENT' | 'PLANTS' | 'DATABASE' | 'SECURITY' | 'LOGS'>('HOUSES');
   const [isRestoring, setIsRestoring] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [logs, setLogs] = useState<SystemLog[]>([]);
@@ -102,10 +101,10 @@ export const AdminView: React.FC = () => {
   }, [users, isOwner, isDirector, isLeadHand, user]);
 
   const availableTabs = useMemo(() => {
-    const tabs: ('HOUSES' | 'PERSONNEL' | 'MANAGEMENT' | 'PLANTS' | 'DATABASE' | 'SECURITY' | 'MOBILE' | 'LOGS')[] = ['HOUSES', 'PERSONNEL', 'MANAGEMENT'];
+    const tabs: ('HOUSES' | 'PERSONNEL' | 'MANAGEMENT' | 'PLANTS' | 'DATABASE' | 'SECURITY' | 'LOGS')[] = ['HOUSES', 'PERSONNEL', 'MANAGEMENT'];
     if (isOwner || isDirector) {
       tabs.splice(3, 0, 'PLANTS');
-      tabs.push('DATABASE', 'SECURITY', 'MOBILE', 'LOGS');
+      tabs.push('DATABASE', 'SECURITY', 'LOGS');
     }
     return tabs;
   }, [isOwner, isDirector]);
@@ -960,30 +959,17 @@ export const AdminView: React.FC = () => {
                         </Button>
                     </div>
                 </div>
-                {/* ACCESS CONTROL - HIDDEN AS REQUESTED */}
-                {/*
+
                 <div className="bg-white dark:bg-slate-900 p-8 rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-sm space-y-6 text-slate-900 dark:text-white">
                     <h3 className="text-xl font-black uppercase">{t('lbl_access_control')}</h3>
                     <p className="text-sm text-slate-500">{t('lbl_access_control_desc')}</p>
-                    <div className="flex items-center justify-between p-4 border border-slate-100 dark:border-slate-800 rounded-2xl">
+                    <div className="flex items-center justify-between p-4 border border-slate-100 dark:border-slate-800 rounded-2xl opacity-50 cursor-not-allowed">
                         <span className="font-bold">{t('lbl_strict_handshake_mode')}</span>
                         <div className="w-12 h-6 bg-verdant rounded-full relative">
                             <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full" />
                         </div>
                     </div>
                 </div>
-                */}
-            </div>
-        )}
-        {activeTab === 'MOBILE' && (
-            <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex flex-col gap-2 text-slate-900 dark:text-white">
-                    <h2 className="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-none">
-                        Mobile <span className="text-verdant">Bridge</span>
-                    </h2>
-                    <p className="text-xs md:text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Native Botanical Synchronization Protocol</p>
-                </div>
-                <MobileBridge />
             </div>
         )}
         {activeTab === 'LOGS' && (

@@ -48,6 +48,7 @@ interface SystemContextType {
   isLocalAiEnabled: boolean;
   setLocalAiEnabled: (enabled: boolean) => void;
   localAiOrigin: 'WINDOW_AI' | 'WEBGPU' | 'NONE';
+  localAiStatus: 'readily' | 'after-download' | 'no' | 'Hardware Ready' | 'NONE';
   localAiProgress: number;
   isLocalAiLoading: boolean;
   initLocalAi: () => Promise<void>;
@@ -71,6 +72,7 @@ export const SystemProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     return storage.get('verdant-local-ai') === 'true';
   });
   const [localAiOrigin, setLocalAiOrigin] = useState<'WINDOW_AI' | 'WEBGPU' | 'NONE'>('NONE');
+  const [localAiStatus, setLocalAiStatus] = useState<'readily' | 'after-download' | 'no' | 'Hardware Ready' | 'NONE'>('NONE');
   const [localAiProgress, setLocalAiProgress] = useState(0);
   const [isLocalAiLoading, setIsLocalAiLoading] = useState(false);
 
@@ -81,6 +83,7 @@ export const SystemProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const caps = await checkLocalAiSupport();
         setIsLocalAiSupported(caps.isSupported);
         setLocalAiOrigin(caps.origin);
+        setLocalAiStatus(caps.status);
       } catch (e) {
         console.warn("System Probe Failed:", e);
       }
@@ -206,6 +209,7 @@ export const SystemProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       isLocalAiEnabled,
       setLocalAiEnabled,
       localAiOrigin,
+      localAiStatus,
       localAiProgress,
       isLocalAiLoading,
       initLocalAi

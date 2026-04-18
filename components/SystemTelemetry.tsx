@@ -3,6 +3,7 @@ import React, { useMemo, useEffect, useState } from 'react';
 import { usePlants } from '../context/PlantContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { useSystem } from '../context/SystemContext';
 import { API_URL } from '../constants';
 import { Activity, Cpu, Database, Key, Brain } from 'lucide-react';
 
@@ -40,22 +41,8 @@ export const SystemTelemetry: React.FC<SystemTelemetryProps> = ({ showUsage = tr
     const { isSynced, plants, tasks, houses } = usePlants();
     const { t } = useLanguage();
     const { token, user } = useAuth();
+    const { isLocalAiSupported, localAiOrigin } = useSystem();
     const [apiUsage, setApiUsage] = useState<ApiUsage | null>(null);
-    const [localAi, setLocalAi] = useState<LocalAiStatus>({ isSupported: false, origin: 'NONE' });
-
-    useEffect(() => {
-        const checkAi = async () => {
-            if (typeof window !== 'undefined') {
-                const hasWindowAi = 'ai' in window && (window as any).ai?.createTextSession;
-                const hasGpu = 'gpu' in navigator;
-                setLocalAi({
-                    isSupported: !!(hasWindowAi || hasGpu),
-                    origin: hasWindowAi ? 'PROMPT_API' : (hasGpu ? 'WEBGPU' : 'NONE')
-                });
-            }
-        };
-        checkAi();
-    }, []);
 
     useEffect(() => {
         const fetchUsage = () => {
@@ -181,8 +168,8 @@ export const SystemTelemetry: React.FC<SystemTelemetryProps> = ({ showUsage = tr
                                 <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400">{(apiUsage.gemini_tokens / 1000).toFixed(1)}k tokens</span>
                             </div>
                         )}
-                        <div className="mt-2 flex gap-1 items-end h-4">
-                            {apiUsage && Object.entries(apiUsage).filter(([key]) => key.endsWith('_count')).map(([key, value], i) => {
+                        <div className="mt-2 flex gap-1 items-end h-4 text-slate-400">
+                            {apiUsage && Object.entries(apiUsage).filter(([key]) => key.endsWith('_count') && key !== 'local_ai_count').map(([key, value], i) => {
                                 const apiKey = key.replace('_count', '');
                                 const limit = API_LIMITS[apiKey] || 1000;
                                 const height = Math.min(100, ((value as number) / limit) * 100);
@@ -213,10 +200,10 @@ export const SystemTelemetry: React.FC<SystemTelemetryProps> = ({ showUsage = tr
                         <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">On-Device AI</span>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-tight ${localAi.isSupported ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
-                            {localAi.isSupported ? `Active (${localAi.origin})` : 'Offline'}
+                        <div className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-tight ${isLocalAiSupported ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
+                            {isLocalAiSupported ? `Active (${localAiOrigin})` : 'Offline'}
                         </div>
-                        {localAi.origin !== 'PROMPT_API' && (
+                        {localAiOrigin === 'NONE' && (
                             <div className="group relative">
                                 <div className="text-[8px] font-bold text-slate-400 border-b border-dashed border-slate-400 cursor-help">Chrome Prompt API Instructions</div>
                                 <div className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-slate-900 text-white text-[10px] rounded-xl hidden group-hover:block shadow-2xl border border-white/10 z-50">
@@ -229,7 +216,7 @@ export const SystemTelemetry: React.FC<SystemTelemetryProps> = ({ showUsage = tr
                         )}
                     </div>
                     <div className="mt-3 text-[9px] text-slate-400 dark:text-slate-500 italic">
-                        {localAi.isSupported ? 'Hardware acceleration active.' : 'Falling back to Cloud (Gemini 1.5).'}
+                        {isLocalAiSupported ? 'Hardware acceleration active.' : 'Falling back to Cloud (Gemini 1.5).'}
                     </div>
                 </div>
             </div>

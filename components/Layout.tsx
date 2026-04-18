@@ -147,7 +147,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const { logout, user, can } = useAuth();
   const { alertMessage, setAlertMessage, searchFilter, setSearchFilter, addPlant, getEffectiveApiKey } = usePlants();
   const { t, lv } = useLanguage();
-  const { showNotification } = useSystem();
+  const { showNotification, isLocalAiEnabled } = useSystem();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showInstallBtn, setShowInstallBtn] = useState(false);
@@ -167,7 +167,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       setIsSyncing(true);
       showNotification("SYNCING SPECIMEN...", "INFO");
       try {
-        const details = await generatePlantDetails(species, undefined, undefined, getEffectiveApiKey());
+        const details = await generatePlantDetails(species, undefined, undefined, getEffectiveApiKey(), isLocalAiEnabled);
         const syncedPlant = {
           ...details,
           id: `p-synced-${generateUUID()}`,

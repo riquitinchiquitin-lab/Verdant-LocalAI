@@ -191,23 +191,54 @@ export const generatePlantDetails = async (
   } : null;
 
   if (isLocalEnabled && typeof window !== 'undefined' && 'ai' in window) {
-    const aiAvailable = (window as any).ai?.canCreateTextSession ? await (window as any).ai.canCreateTextSession() : 'no';
+    const ai = (window as any).ai;
+    let aiAvailable = 'no';
     
-    if (aiAvailable !== 'no') {
+    // 1. Check latest Language Model API
+    if (ai.languageModel && typeof ai.languageModel.capabilities === 'function') {
+      try {
+        const caps = await ai.languageModel.capabilities();
+        aiAvailable = caps.available;
+      } catch (e) {
+        console.warn("[SYSTEM] Error checking languageModel capabilities:", e);
+      }
+    } 
+    // 2. Check assistant API (sometimes aliased)
+    else if (ai.assistant && typeof ai.assistant.capabilities === 'function') {
+      try {
+        const caps = await ai.assistant.capabilities();
+        aiAvailable = caps.available;
+      } catch (e) {
+        console.warn("[SYSTEM] Error checking assistant capabilities:", e);
+      }
+    }
+    // 3. Check legacy Assistant API
+    else if (ai.canCreateTextSession) {
+      aiAvailable = await ai.canCreateTextSession();
+    }
+    
+    if (aiAvailable === 'readily' || aiAvailable === 'after-download') {
       onLog?.("msg_harmonizing_data", "LOCAL_AI");
       try {
         const rawData = { trefle: strippedTrefle, opb: strippedOpb, perenual: strippedPerenual, grounding };
         const localHarmonized = await harmonizePlantDataLocal(scientificName, rawData);
         if (localHarmonized) {
           console.info(`[SYSTEM] Local Harmonization successful for ${scientificName}`);
-          // Now translate the key fields locally
-          const fieldsToTranslate = ['description', 'aiInsight'];
+          
+          // Now translate key fields locally
+          const fieldsToTranslate = ['description', 'aiInsight', 'repottingInstructions', 'propagationInstructions'];
           const translations: Record<string, LocalizedString> = {};
           
           for (const field of fieldsToTranslate) {
             if (localHarmonized[field]) {
-              const localTrans = await translateTextLocal(localHarmonized[field], TARGET_LANGS);
-              translations[field] = localTrans as LocalizedString;
+              try {
+                const localTrans = await translateTextLocal(localHarmonized[field], TARGET_LANGS);
+                if (localTrans && Object.keys(localTrans).length > 0) {
+                    translations[field] = localTrans as LocalizedString;
+                }
+              } catch (transErr) {
+                console.warn(`[SYSTEM] Local translation failed for field ${field}:`, transErr);
+              }
             }
           }
 
@@ -215,6 +246,8 @@ export const generatePlantDetails = async (
             ...localHarmonized,
             description: translations.description,
             aiInsight: translations.aiInsight,
+            repottingInstructions: translations.repottingInstructions,
+            propagationInstructions: translations.propagationInstructions,
             trefleId: trefle?.id,
             opbId: opb?.pid,
             images: base64Image ? [base64Image] : []
