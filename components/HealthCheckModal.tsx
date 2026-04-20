@@ -45,38 +45,29 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({ isOpen, onCl
     if (!photo && !isLocalAiEnabled) return;
     setIsLoading(true);
     try {
-      if (isLocalAiEnabled && !photo) {
-        // Run local text-based diagnosis
-        const localAdvice = await diagnosePlantHealthLocal(plant.species, observations);
-        const diagnosis: { diagnosis: LocalizedString; recoveryPlan: LocalizedArray } = {
-          diagnosis: { en: localAdvice.split('\n')[0] || "Local Diagnosis" },
-          recoveryPlan: { en: localAdvice.split('\n').slice(1).filter(l => l.trim()) }
-        };
+      const diagnosis = await analyzePlantHealth(
+        plant, 
+        photo || '', 
+        observations, 
+        getEffectiveApiKey(), 
+        isLocalAiEnabled
+      );
+      
+      if (diagnosis) {
         setResult(diagnosis);
+        // Save to history
         await addLog(plant.id, {
           id: `h-${generateUUID()}`,
           date: new Date().toISOString(),
           type: 'DISEASE_CHECK',
+          imageUrl: photo || undefined,
           localizedNote: diagnosis.diagnosis,
-          metadata: { recoveryPlan: diagnosis.recoveryPlan, observations, isLocal: true }
+          metadata: { 
+            recoveryPlan: diagnosis.recoveryPlan,
+            observations: observations,
+            isLocal: isLocalAiEnabled && !photo // Log if it was a text-only local run
+          }
         });
-      } else {
-        const diagnosis = await analyzePlantHealth(plant, photo || '', observations, getEffectiveApiKey());
-        if (diagnosis) {
-          setResult(diagnosis);
-          // Save to history
-          await addLog(plant.id, {
-            id: `h-${generateUUID()}`,
-            date: new Date().toISOString(),
-            type: 'DISEASE_CHECK',
-            imageUrl: photo || undefined,
-            localizedNote: diagnosis.diagnosis,
-            metadata: { 
-              recoveryPlan: diagnosis.recoveryPlan,
-              observations: observations
-            }
-          });
-        }
       }
     } catch (e) {
       console.error(e);

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
-import { identifyPlantWithPlantNet, identifyPlantWithGemini, generatePlantDetails, createPlant } from '../services/plantAi';
+import { identifyPlantWithPlantNet, generatePlantDetails, createPlant } from '../services/plantAi';
 import { translateInput } from '../services/translationService';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -141,22 +141,11 @@ export const AddPlantModal: React.FC<AddPlantModalProps> = ({ isOpen, onClose, o
       addLog(t('msg_uplink_plantnet'), "NETWORK");
       const blobs = specimenImages.map(img => dataURLtoBlob(img));
       
-      // 1. Attempt Local WebNN Identification (Highest Privacy, Lowest Token Usage)
-      let idResult = null;
-      if (isLocalAiEnabled) {
-          addLog("ACCESSING LOCAL NPU via WebNN...", "SYSTEM");
-          // idResult = await identifyWithWebNN(blobs); // Logic to be added in plantAi.ts
-      }
+      // Primary & Exclusive Authority: Pl@ntNet 
+      let idResult = await identifyPlantWithPlantNet(blobs);
       
-      // 2. Fallback to Pl@ntNet Proxy
       if (!idResult) {
-        idResult = await identifyPlantWithPlantNet(blobs);
-      }
-      
-      // 3. Last fallback: Gemini Vision (Cloud)
-      if (!idResult || idResult.score < 0.15) {
-          addLog(t('msg_rerouting_gemini'), "GEMINI");
-          idResult = await identifyPlantWithGemini(specimenImages[0], getEffectiveApiKey());
+          throw new Error("PLANTNET_SERVICE_FAULT: No specimen matches found in global archives.");
       }
 
       if (!idResult) throw new Error(t('msg_uplink_fault'));

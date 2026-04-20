@@ -54,20 +54,21 @@ import { trackUsage } from "./usageService";
 import { translateTextLocal } from "./LocalAiService";
 
 const executeTranslation = async (text: string, sourceLang: string, apiKey?: string): Promise<LocalizedString> => {
-  // Check if local AI is enabled and supported
-  const isLocalEnabled = localStorage.getItem('verdant-local-ai') === 'true';
-  if (isLocalEnabled && typeof window !== 'undefined' && 'ai' in window) {
-    try {
+  // 1. Strict Priority: Local NPU/GPU Translation
+  try {
+    const isLocalEnabled = localStorage.getItem('verdant-local-ai') === 'true';
+    if (isLocalEnabled) {
+      console.info("[LOCAL_AI] Attempting Local Translation via NPU/GPU...");
       const localResult = await translateTextLocal(text, TARGET_LANGS);
-      if (Object.keys(localResult).length > 0) {
+      if (localResult && Object.keys(localResult).length > 0) {
         return localResult as LocalizedString;
       }
-    } catch (e) {
-      console.warn("Local translation failed, falling back to Cloud:", e);
     }
+  } catch (e) {
+    console.warn("[LOCAL_AI] Local translation fault, falling back to Gemini:", e);
   }
 
-  // Fix: Use provided apiKey or fallback to global getGeminiApiKey()
+  // 2. Fallback to Cloud (Gemini)
   const key = apiKey || getGeminiApiKey();
   if (!key) {
     throw new Error("UPLINK_FAULT: Gemini API Key is missing. Please ensure GEMINI_API_KEY is set in your environment variables.");

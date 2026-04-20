@@ -46,23 +46,22 @@ export const identifyInventoryItem = async (
     throw lastError;
   };
 
+  const isLocalEnabled = localStorage.getItem('verdant-local-ai') === 'true';
+
   const prompt = `
     TASK: Identify this botanical/gardening product and provide technical specifications.
+    Return the data in English.
     
     INSTRUCTIONS:
     1. Extract brand, model, and product name.
     2. Categorize: [tools, insecticide, fertiliser, seeds, soil, accessories, pots].
-    3. Generate a technical description and usage instructions.
+    3. Generate a technical description and usage instructions in English.
     4. Provide compatibility tags (which plant species is this for?).
-    5. LOCALIZATION: Provide the 'name', 'brand', 'description', 'applicationUsage', 'instructions', 'compatibility', and 'soilTypes' as objects localized into: ${TARGET_LANGS.join(', ')}.
     
     Return ONLY pure JSON matching the schema.
   `;
 
   try {
-    // Check if local AI is ready for harmonization (to keep logic consistent)
-    const isLocalEnabled = localStorage.getItem('verdant-local-ai') === 'true';
-    
     const response = await callGeminiWithRetry(() => ai.models.generateContent({
       model: model,
       contents: {
@@ -77,22 +76,18 @@ export const identifyInventoryItem = async (
           type: Type.OBJECT,
           properties: {
             category: { type: Type.STRING },
-            name: { type: Type.OBJECT, properties: TARGET_LANGS.reduce((a:any, l) => ({...a, [l]: {type: Type.STRING}}), {}) },
-            brand: { type: Type.OBJECT, properties: TARGET_LANGS.reduce((a:any, l) => ({...a, [l]: {type: Type.STRING}}), {}) },
-            description: { type: Type.OBJECT, properties: TARGET_LANGS.reduce((a:any, l) => ({...a, [l]: {type: Type.STRING}}), {}) },
+            name: { type: Type.STRING },
+            brand: { type: Type.STRING },
+            description: { type: Type.STRING },
             quantity: { type: Type.NUMBER },
             unit: { type: Type.STRING },
             model: { type: Type.STRING },
-            applicationUsage: { type: Type.OBJECT, properties: TARGET_LANGS.reduce((a:any, l) => ({...a, [l]: {type: Type.STRING}}), {}) },
-            compatibility: { type: Type.OBJECT, properties: TARGET_LANGS.reduce((a:any, l) => ({...a, [l]: {type: Type.ARRAY, items: {type: Type.STRING}}}), {}) },
-            instructions: { type: Type.OBJECT, properties: TARGET_LANGS.reduce((a:any, l) => ({...a, [l]: {type: Type.STRING}}), {}) },
-            soilTypes: { type: Type.OBJECT, properties: TARGET_LANGS.reduce((a:any, l) => ({...a, [l]: {type: Type.ARRAY, items: {type: Type.STRING}}}), {}) },
+            applicationUsage: { type: Type.STRING },
+            compatibility: { type: Type.ARRAY, items: { type: Type.STRING } },
+            instructions: { type: Type.STRING },
+            soilTypes: { type: Type.ARRAY, items: { type: Type.STRING } },
             potType: { type: Type.STRING },
             potColor: { type: Type.STRING },
-            openingHoleSize: { type: Type.STRING },
-            depth: { type: Type.STRING },
-            material: { type: Type.STRING },
-            color: { type: Type.STRING },
             drainageCapability: { type: Type.STRING }
           }
         }
@@ -106,25 +101,48 @@ export const identifyInventoryItem = async (
       trackUsage('gemini');
     }
 
-    const result = JSON.parse(response.text || "{}");
-    onLog?.("Identification & Translation finalized in single pass.", "GEMINI");
+    const rawResult = JSON.parse(response.text || "{}");
+    onLog?.("Initial Vision Identification finalized (Uplink Successful).", "GEMINI");
 
-    // ENRICHMENT STEP: If local AI is enabled, try to refine the description or instructions locally
-    if (isLocalEnabled && typeof window !== 'undefined' && 'ai' in window) {
+    // Initialize result with localized structures
+    const result: any = {
+      ...rawResult,
+      name: { en: rawResult.name },
+      brand: { en: rawResult.brand },
+      description: { en: rawResult.description },
+      applicationUsage: { en: rawResult.applicationUsage },
+      instructions: { en: rawResult.instructions },
+      compatibility: { en: rawResult.compatibility },
+      soilTypes: { en: rawResult.soilTypes }
+    };
+
+    // 2. PRIORITY: Local Interpretation & Translation (0 Tokens)
+    if (isLocalEnabled) {
+      onLog?.("Initiating Local NPU Interpretation & Localization...", "LOCAL_AI");
       try {
-        const localEnriched = await runEnrichmentLocal(result.name?.en || result.model || 'Item', result.description?.en || '');
+        // ENRICHMENT
+        const localEnriched = await runEnrichmentLocal(rawResult.name || rawResult.model || 'Item', rawResult.description || '');
         if (localEnriched) {
-            console.log("[INVENTORY] Local enrichment successful");
-            // Translate the enriched part locally too
-            const localTrans = await translateTextLocal(localEnriched, TARGET_LANGS);
-            if (localTrans && Object.keys(localTrans).length > 0) {
-                result.description = { ...result.description, ...localTrans };
-                onLog?.("Local AI Enrichment Applied", "LOCAL_AI");
-            }
+            result.description.en = localEnriched;
+            onLog?.("Local NPU Enrichment Applied", "LOCAL_AI");
         }
+
+        // LOCAL TRANSLATION
+        const fieldsToTranslate = ['name', 'brand', 'description', 'applicationUsage', 'instructions'];
+        for (const field of fieldsToTranslate) {
+          if (rawResult[field]) {
+            const trans = await translateTextLocal(rawResult[field], TARGET_LANGS.filter(l => l !== 'en'));
+            result[field] = { ...result[field], ...trans };
+          }
+        }
+        onLog?.("Local NPU Localization Finalized", "LOCAL_AI");
       } catch (e) {
-          console.warn("[INVENTORY] Local enrichment failed:", e);
+          console.warn("[INVENTORY] Local NPU processing failed, missing translations will stay in English:", e);
       }
+    } else {
+      // Basic fallback: Keep in English or handle cloud translation if really needed
+      // For this objective, we prioritize English over burning tokens on translations
+      onLog?.("Local AI Disabled: Skipping Multi-Language Sync to preserve tokens.", "WARNING");
     }
 
     result.images = [image];

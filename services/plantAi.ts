@@ -4,7 +4,7 @@ import { Plant, LocalizedString, LocalizedArray } from '../types';
 import { fetchTrefleData, fetchOpenPlantBookData, fetchPerenualData, searchGroundingData } from './botanicalServices';
 import { trackUsage } from './usageService';
 import { generateUUID } from './crypto';
-import { harmonizePlantDataLocal, translateTextLocal } from './LocalAiService';
+import { diagnosePlantHealthLocal, harmonizePlantDataLocal, translateTextLocal } from './LocalAiService';
 
 const TARGET_LANGS = ['en', 'zh', 'ja', 'ko', 'es', 'fr', 'pt', 'de', 'id', 'vi', 'tl'];
 
@@ -94,45 +94,11 @@ export const identifyPlantWithPlantNet = async (imageBlobs: Blob[]): Promise<any
 };
 
 /**
- * 1b. Local WebNN Plant Identification (Browser NPU Acceleration)
- * This uses onnxruntime-web to perform client-side classification.
- */
-export const identifyWithWebNN = async (imageBlobs: Blob[]): Promise<any | null> => {
-  try {
-    // 1. Check for WebNN support
-    if (!('ml' in navigator)) return null;
-
-    console.info("[WEBNN] Starting Local Inference...");
-    const ort = await import('onnxruntime-web');
-    
-    // Note: The actual model file (e.g., mobilenet_v2.onnx) should be in /public/models
-    // This is a structural implementation showing how it reduces Gemini usage.
-    const modelUrl = '/models/plant_classifier.onnx';
-    
-    // Use WebNN execution provider
-    const session = await (ort as any).InferenceSession.create(modelUrl, { 
-      executionProviders: [{ name: 'webnn', deviceType: 'gpu' }] 
-    });
-
-    // Dummy inference logic - actual pre-processing (resize/normalize) would occur here
-    // In a real app, you'd feed the image pixels into the session.
-    // If successful, returns the best match from local labels.
-    
-    // For now, we return null to proceed to fallback, but the structure is ready.
-    // When successful, we track the equivalent cloud tokens saved:
-    // trackUsage('local_ai', 258); 
-    
-    return null;
-  } catch (e) {
-    console.warn("[WEBNN] Local inference failed or model not found:", e);
-    return null;
-  }
-};
-
-/**
  * 2. Visual Identification Fallback (Gemini)
+ * Note: Only used as a critical safety net if PlantNet and WebNN fail.
  */
 export const identifyPlantWithGemini = async (base64: string, apiKey?: string): Promise<any> => {
+  console.info("[GEMINI] Rerouting to Cloud Vision as terminal fallback...");
   const key = apiKey || getGeminiApiKey();
   if (!key) {
     throw new Error("UPLINK_FAULT: Gemini API Key is missing. Please ensure GEMINI_API_KEY is set in your environment variables.");
@@ -185,29 +151,36 @@ export const generatePlantDetails = async (
   isLocalEnabled: boolean = false
 ): Promise<Partial<Plant>> => {
   const key = apiKey || getGeminiApiKey();
-  if (!key) {
-    throw new Error("UPLINK_FAULT: Gemini API Key is missing. Please ensure GEMINI_API_KEY is set in your environment variables.");
-  }
   
+  // 1. Fetch Technical Data Sources (No Tokens)
   onLog?.("msg_accessing_archives", "NETWORK");
-  const [trefle, opb, perenual, grounding] = await Promise.all([
+  const [trefle, opb, perenual] = await Promise.all([
     fetchTrefleData(scientificName).catch(() => null),
     fetchOpenPlantBookData(scientificName).catch(() => null),
-    fetchPerenualData(scientificName).catch(() => null),
-    searchGroundingData(`how to propagate and repot ${scientificName} successfully`).catch(() => null)
+    fetchPerenualData(scientificName).catch(() => null)
   ]);
 
-  // Strip down raw data to save tokens
+  // 2. Evaluate if data is missing/shallow
+  const hasSubstantialData = (trefle && trefle.main_species) || (opb && opb.description) || perenual;
+  
+  // Conditionally search grounding data only if primary sources are shallow
+  let grounding = null;
+  if (!hasSubstantialData) {
+    onLog?.("Deep searching archives...", "NETWORK");
+    grounding = await searchGroundingData(`botanical propagation and care for ${scientificName}`).catch(() => null);
+  }
+
+  // Strip down raw data
   const strippedTrefle = trefle ? {
     id: trefle.id,
     scientific_name: trefle.scientific_name,
     common_name: trefle.common_name,
     family: trefle.family?.name,
-    main_species: {
-        duration: trefle.main_species?.duration,
-        edible: trefle.main_species?.edible,
-        specifications: trefle.main_species?.specifications
-    }
+    main_species: trefle.main_species ? {
+        duration: trefle.main_species.duration,
+        edible: trefle.main_species.edible,
+        specifications: trefle.main_species.specifications
+    } : undefined
   } : null;
 
   const strippedOpb = opb ? {
@@ -226,16 +199,16 @@ export const generatePlantDetails = async (
       sunlight: perenual.sunlight
   } : null;
 
+  const rawData = { trefle: strippedTrefle, opb: strippedOpb, perenual: strippedPerenual, grounding };
+
+  // 3. PRIORITY: Local Interpretation & Harmonization (0 Tokens)
   if (isLocalEnabled) {
     onLog?.("msg_harmonizing_data", "LOCAL_AI");
     try {
-      const rawData = { trefle: strippedTrefle, opb: strippedOpb, perenual: strippedPerenual, grounding };
       const localHarmonized = await harmonizePlantDataLocal(scientificName, rawData);
       
       if (localHarmonized) {
-        console.info(`[SYSTEM] Local Harmonization successful for ${scientificName}`);
-        
-        // Local translation if possible...
+        console.info(`[NPU] Harmonized ${scientificName} successfully (Saved Tokens)`);
         return createPlant({
           ...localHarmonized,
           trefleId: trefle?.id,
@@ -244,8 +217,13 @@ export const generatePlantDetails = async (
         });
       }
     } catch (e) {
-      console.warn("[SYSTEM] Local harmonization failed, falling back to Cloud:", e);
+      console.warn("[NPU] Local harmonization fault, falling back to Cloud:", e);
     }
+  }
+
+  // 4. TERMINAL FALLBACK: Gemini Cloud Harmonization (Costly Tokens)
+  if (!key) {
+    throw new Error("UPLINK_FAULT: Gemini API Key is missing. Please ensure GEMINI_API_KEY is set in your environment variables.");
   }
 
   const ai = new GoogleGenAI({ apiKey: key });
@@ -468,8 +446,27 @@ export const analyzePlantHealth = async (
   plant: Plant,
   base64: string,
   userObservations?: string,
-  apiKey?: string
+  apiKey?: string,
+  isLocalEnabled: boolean = false
 ): Promise<{ diagnosis: LocalizedString; recoveryPlan: LocalizedArray } | null> => {
+
+  // 1. Prioritize Local Interpretation (NPU/GPU)
+  if (isLocalEnabled) {
+    console.info("[LOCAL_AI] Interpreting health via NPU...");
+    try {
+      const diagnosisText = await diagnosePlantHealthLocal(plant.species, userObservations || "No specific symptoms noted");
+      if (diagnosisText) {
+        // Simple parsing of local result
+        return {
+          diagnosis: { en: diagnosisText },
+          recoveryPlan: { en: ["Analyze further with visual mode if uncertain."] }
+        };
+      }
+    } catch (e) {
+      console.warn("[LOCAL_AI] Local interpretation failed:", e);
+    }
+  }
+
   const key = apiKey || getGeminiApiKey();
   if (!key) return null;
   const ai = new GoogleGenAI({ apiKey: key });
