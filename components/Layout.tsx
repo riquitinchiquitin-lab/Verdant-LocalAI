@@ -81,7 +81,7 @@ const QuotaBar: React.FC = () => {
             <div className="flex flex-col">
               <span className="text-[9px] font-black text-slate-900 dark:text-white uppercase tracking-widest">{t('sys_local_ai')}</span>
               <span className="text-[7px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tighter">
-                {localAiOrigin === 'WINDOW_AI' ? 'Gemini Nano (Pixel/Chrome)' : 'WebGPU Accelerated (Llama-3)'}
+                {localAiOrigin === 'WEBNN' ? 'NPU Accelerated (WebNN)' : 'WebGPU Accelerated (Gemma)'}
               </span>
             </div>
             <button 

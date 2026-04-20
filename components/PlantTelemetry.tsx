@@ -105,20 +105,19 @@ export const PlantTelemetry: React.FC<PlantTelemetryProps> = ({ mode = 'full' })
                                     <Sparkles className={`w-4 h-4 ${isLocalAiEnabled ? 'text-amber-500 animate-pulse' : 'text-slate-300'}`} />
                                     <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                                         {isLocalAiLoading ? 'AI Core Initializing...' : 
-                                         localAiStatus === 'after-download' ? 'AI Core: Download Required' :
                                          isLocalAiEnabled ? 'Local AI Active' : 'Local AI Standby'}
                                     </span>
-                                    {!isLocalAiEnabled && localAiOrigin === 'WINDOW_AI' && (
+                                    {!isLocalAiEnabled && localAiOrigin === 'WEBNN' && (
                                         <button 
                                             onClick={() => setShowHelp(true)}
                                             className="p-1 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-colors"
                                         >
-                                            <HelpCircle className="w-4 h-4 text-amber-500" />
+                                            <HelpCircle className="w-4 h-4 text-emerald-500" />
                                         </button>
                                     )}
                                 </div>
                                 <span className="text-[7px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-tighter">
-                                    {localAiOrigin === 'WINDOW_AI' ? 'Tensor G4 / Gemini Nano' : 'Tensor G4 / WebGPU Gemma'}
+                                    {localAiOrigin === 'WEBNN' ? 'NPU Accelerated' : 'WebGPU Accelerated'}
                                 </span>
                             </div>
                             

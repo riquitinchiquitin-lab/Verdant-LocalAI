@@ -32,8 +32,8 @@ export const getGeminiApiKey = (): string => {
   return key;
 };
 
-// Current App Version
-export const APP_VERSION = '1.0';
+// App Versioning
+export const APP_VERSION = '1.1';
 
 // API Configuration - SECRETS REMOVED (Now handled by Backend Proxy)
 export const OPB_CLIENT_ID = 'verdant_app';

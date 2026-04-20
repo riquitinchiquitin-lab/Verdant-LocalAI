@@ -1,10 +1,11 @@
 
 import { trackUsage } from './usageService';
+import { API_URL } from '../constants';
 
 export interface LocalAiCapabilities {
   isSupported: boolean;
-  origin: 'WINDOW_AI' | 'WEBGPU' | 'NONE';
-  status: 'readily' | 'after-download' | 'no' | 'Hardware Ready' | 'NONE';
+  origin: 'WEBNN' | 'WEBGPU' | 'NONE';
+  status: 'Hardware Ready' | 'Experimental' | 'NONE';
 }
 
 // Global engine instance to persist across calls - using any to avoid top-level heavy import
@@ -12,53 +13,19 @@ let webLlmEngine: any = null;
 const SELECTED_MODEL = "gemma-2b-it-q4f16_1-MLC"; // Mobile-optimized for Pixel Tensor chips
 
 export const checkLocalAiSupport = async (): Promise<LocalAiCapabilities> => {
-  // 1. Check for window.ai with robust existence check
-  if (typeof window !== 'undefined' && 'ai' in window) {
-    try {
-      const ai = (window as any).ai;
-      
-      // 1a. Latest Chrome "Language Model" API
-      if (ai.languageModel && typeof ai.languageModel.capabilities === 'function') {
-        const caps = await ai.languageModel.capabilities();
-        if (caps.available !== 'no') {
-          return { isSupported: true, origin: 'WINDOW_AI', status: caps.available };
-        }
-      }
-
-      // 1b. Legacy "Assistant/Text Session" API
-      if (ai && typeof ai.canCreateTextSession === 'function') {
-        const canCreate = await ai.canCreateTextSession();
-        if (canCreate === 'readily' || canCreate === 'after-download') {
-          return { isSupported: true, origin: 'WINDOW_AI', status: canCreate };
-        }
-      }
-
-      // 1c. Assistant API (sometimes aliased)
-      if (ai.assistant && typeof ai.assistant.capabilities === 'function') {
-         const caps = await ai.assistant.capabilities();
-         if (caps.available !== 'no') {
-             return { isSupported: true, origin: 'WINDOW_AI', status: caps.available };
-         }
-      }
-    } catch (e) {
-      console.warn("Verdant AI Probe Fault:", e);
-    }
+  // 1. Check for WebNN (The new priority for browser-based NPU acceleration)
+  if (typeof navigator !== 'undefined' && 'ml' in navigator) {
+    return { isSupported: true, origin: 'WEBNN', status: 'Hardware Ready' };
   }
 
   // 2. Check for WebGPU
   if (typeof navigator !== 'undefined' && 'gpu' in navigator) {
     try {
-      // Add a timeout to requestAdapter to prevent hanging on mobile/iframes
-      const adapterPromise = (navigator as any).gpu.requestAdapter();
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("WebGPU Timeout")), 2000));
-      
-      const adapter = await Promise.race([adapterPromise, timeoutPromise]) as any;
+      const adapter = await (navigator as any).gpu.requestAdapter();
       if (adapter) {
         return { isSupported: true, origin: 'WEBGPU', status: 'Hardware Ready' };
       }
-    } catch (e) {
-      console.warn("WebGPU Probe Fault:", e);
-    }
+    } catch (e) {}
   }
 
   return { isSupported: false, origin: 'NONE', status: 'NONE' };
@@ -90,43 +57,16 @@ const estimateTokens = (text: string): number => {
 };
 
 export const runLocalAiPrompt = async (prompt: string, systemPrompt?: string): Promise<string> => {
-  // 1. Prefer window.ai if available
-  if (typeof window !== 'undefined' && 'ai' in window) {
-    try {
-      const ai = (window as any).ai;
-      let result = "";
-      
-      // Latest API
-      if (ai.languageModel && typeof ai.languageModel.create === 'function') {
-        const session = await ai.languageModel.create({
-          systemPrompt: systemPrompt || "You are a botanical expert assistant."
-        });
-        result = await session.prompt(prompt);
-        session.destroy();
-      } 
-      // Legacy API
-      else if (typeof ai.createTextSession === 'function') {
-        const session = await ai.createTextSession({
-          systemPrompt: systemPrompt || "You are a botanical expert assistant."
-        });
-        result = await session.prompt(prompt);
-        session.destroy();
-      }
-
-  if (result) {
-    const totalTokens = estimateTokens(prompt) + estimateTokens(result) + estimateTokens(systemPrompt || "");
-    console.info(`[LOCAL_AI] window.ai Success | Tokens: ${totalTokens}`);
-    trackUsage('local_ai', totalTokens);
-    return result;
-  }
-    } catch (e) {
-      console.warn("window.ai failed, attempting WebGPU...", e);
-    }
-  }
-
-  // 2. Fallback to WebLLM
+  // WebNN prompt logic would go here if an LLM is used with WebNN
+  // Currently, WebNN is best for vision models (classification/detection)
+  
+  // 1. Fallback to WebLLM (WebGPU-based LLM)
   if (!webLlmEngine) {
-    await initWebLlm();
+    try {
+       await initWebLlm();
+    } catch (e) {
+       console.error("Local LLM Init failed:", e);
+    }
   }
 
   if (webLlmEngine) {

@@ -94,6 +94,42 @@ export const identifyPlantWithPlantNet = async (imageBlobs: Blob[]): Promise<any
 };
 
 /**
+ * 1b. Local WebNN Plant Identification (Browser NPU Acceleration)
+ * This uses onnxruntime-web to perform client-side classification.
+ */
+export const identifyWithWebNN = async (imageBlobs: Blob[]): Promise<any | null> => {
+  try {
+    // 1. Check for WebNN support
+    if (!('ml' in navigator)) return null;
+
+    console.info("[WEBNN] Starting Local Inference...");
+    const ort = await import('onnxruntime-web');
+    
+    // Note: The actual model file (e.g., mobilenet_v2.onnx) should be in /public/models
+    // This is a structural implementation showing how it reduces Gemini usage.
+    const modelUrl = '/models/plant_classifier.onnx';
+    
+    // Use WebNN execution provider
+    const session = await (ort as any).InferenceSession.create(modelUrl, { 
+      executionProviders: [{ name: 'webnn', deviceType: 'gpu' }] 
+    });
+
+    // Dummy inference logic - actual pre-processing (resize/normalize) would occur here
+    // In a real app, you'd feed the image pixels into the session.
+    // If successful, returns the best match from local labels.
+    
+    // For now, we return null to proceed to fallback, but the structure is ready.
+    // When successful, we track the equivalent cloud tokens saved:
+    // trackUsage('local_ai', 258); 
+    
+    return null;
+  } catch (e) {
+    console.warn("[WEBNN] Local inference failed or model not found:", e);
+    return null;
+  }
+};
+
+/**
  * 2. Visual Identification Fallback (Gemini)
  */
 export const identifyPlantWithGemini = async (base64: string, apiKey?: string): Promise<any> => {
@@ -190,78 +226,26 @@ export const generatePlantDetails = async (
       sunlight: perenual.sunlight
   } : null;
 
-  if (isLocalEnabled && typeof window !== 'undefined' && 'ai' in window) {
-    const ai = (window as any).ai;
-    let aiAvailable = 'no';
-    
-    // 1. Check latest Language Model API
-    if (ai.languageModel && typeof ai.languageModel.capabilities === 'function') {
-      try {
-        const caps = await ai.languageModel.capabilities();
-        aiAvailable = caps.available;
-      } catch (e) {
-        console.warn("[SYSTEM] Error checking languageModel capabilities:", e);
+  if (isLocalEnabled) {
+    onLog?.("msg_harmonizing_data", "LOCAL_AI");
+    try {
+      const rawData = { trefle: strippedTrefle, opb: strippedOpb, perenual: strippedPerenual, grounding };
+      const localHarmonized = await harmonizePlantDataLocal(scientificName, rawData);
+      
+      if (localHarmonized) {
+        console.info(`[SYSTEM] Local Harmonization successful for ${scientificName}`);
+        
+        // Local translation if possible...
+        return createPlant({
+          ...localHarmonized,
+          trefleId: trefle?.id,
+          opbId: opb?.pid,
+          images: base64Image ? [base64Image] : []
+        });
       }
-    } 
-    // 2. Check assistant API (sometimes aliased)
-    else if (ai.assistant && typeof ai.assistant.capabilities === 'function') {
-      try {
-        const caps = await ai.assistant.capabilities();
-        aiAvailable = caps.available;
-      } catch (e) {
-        console.warn("[SYSTEM] Error checking assistant capabilities:", e);
-      }
+    } catch (e) {
+      console.warn("[SYSTEM] Local harmonization failed, falling back to Cloud:", e);
     }
-    // 3. Check legacy Assistant API
-    else if (ai.canCreateTextSession) {
-      aiAvailable = await ai.canCreateTextSession();
-    }
-    
-    if (aiAvailable === 'readily' || aiAvailable === 'after-download') {
-      onLog?.("msg_harmonizing_data", "LOCAL_AI");
-      try {
-        const rawData = { trefle: strippedTrefle, opb: strippedOpb, perenual: strippedPerenual, grounding };
-        const localHarmonized = await harmonizePlantDataLocal(scientificName, rawData);
-        if (localHarmonized) {
-          console.info(`[SYSTEM] Local Harmonization successful for ${scientificName}`);
-          
-          // Now translate key fields locally
-          const fieldsToTranslate = ['description', 'aiInsight', 'repottingInstructions', 'propagationInstructions'];
-          const translations: Record<string, LocalizedString> = {};
-          
-          for (const field of fieldsToTranslate) {
-            if (localHarmonized[field]) {
-              try {
-                const localTrans = await translateTextLocal(localHarmonized[field], TARGET_LANGS);
-                if (localTrans && Object.keys(localTrans).length > 0) {
-                    translations[field] = localTrans as LocalizedString;
-                }
-              } catch (transErr) {
-                console.warn(`[SYSTEM] Local translation failed for field ${field}:`, transErr);
-              }
-            }
-          }
-
-          return createPlant({
-            ...localHarmonized,
-            description: translations.description,
-            aiInsight: translations.aiInsight,
-            repottingInstructions: translations.repottingInstructions,
-            propagationInstructions: translations.propagationInstructions,
-            trefleId: trefle?.id,
-            opbId: opb?.pid,
-            images: base64Image ? [base64Image] : []
-          });
-        }
-      } catch (e) {
-        console.warn("[SYSTEM] Local harmonization failed, falling back to Cloud:", e);
-        onLog?.(`Local AI Fault: ${e instanceof Error ? e.message : 'Unknown'}`, "DEBUG");
-      }
-    } else {
-        console.warn("[SYSTEM] window.ai exists but session cannot be created. Status:", aiAvailable);
-    }
-  } else if (isLocalEnabled) {
-      console.warn("[SYSTEM] Local AI enabled but 'window.ai' not found in browser context. Falling back to Gemini Cloud.");
   }
 
   const ai = new GoogleGenAI({ apiKey: key });

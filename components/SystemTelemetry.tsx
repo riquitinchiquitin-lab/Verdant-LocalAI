@@ -15,6 +15,8 @@ interface LocalAiStatus {
 interface ApiUsage {
     gemini_count: number;
     gemini_tokens: number;
+    local_ai_tokens: number;
+    local_ai_count: number;
     plantnet_count: number;
     trefle_count: number;
     perenual_count: number;
@@ -164,8 +166,14 @@ export const SystemTelemetry: React.FC<SystemTelemetryProps> = ({ showUsage = tr
                         </div>
                         {apiUsage && apiUsage.gemini_tokens > 0 && (
                             <div className="flex items-center gap-1 mt-1">
-                                <span className="text-[9px] font-black text-amber-500 uppercase tracking-tight">Gemini:</span>
+                                <span className="text-[9px] font-black text-amber-500 uppercase tracking-tight">Cloud:</span>
                                 <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400">{(apiUsage.gemini_tokens / 1000).toFixed(1)}k tokens</span>
+                            </div>
+                        )}
+                        {apiUsage && apiUsage.local_ai_tokens > 0 && (
+                            <div className="flex items-center gap-1 mt-0.5">
+                                <span className="text-[9px] font-black text-emerald-500 uppercase tracking-tight">Saved:</span>
+                                <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400">{(apiUsage.local_ai_tokens / 1000).toFixed(1)}k tokens</span>
                             </div>
                         )}
                         <div className="mt-2 flex gap-1 items-end h-4 text-slate-400">
@@ -203,20 +211,12 @@ export const SystemTelemetry: React.FC<SystemTelemetryProps> = ({ showUsage = tr
                         <div className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-tight ${isLocalAiSupported ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
                             {isLocalAiSupported ? `Active (${localAiOrigin})` : 'Offline'}
                         </div>
-                        {localAiOrigin === 'NONE' && (
-                            <div className="group relative">
-                                <div className="text-[8px] font-bold text-slate-400 border-b border-dashed border-slate-400 cursor-help">Chrome Prompt API Instructions</div>
-                                <div className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-slate-900 text-white text-[10px] rounded-xl hidden group-hover:block shadow-2xl border border-white/10 z-50">
-                                    <p className="font-black text-emerald-400 mb-1 leading-tight uppercase">Requirements:</p>
-                                    <p className="opacity-70 leading-relaxed text-[9px]">
-                                        Enable <strong>"Prompt API with Gemini Nano"</strong> and <strong>"Optimization Guide on-device model"</strong> (set to BypassPref) in <code>chrome://flags</code>.
-                                    </p>
-                                </div>
-                            </div>
+                        {isLocalAiSupported && localAiOrigin === 'WEBNN' && (
+                            <div className="text-[8px] font-black text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded uppercase tracking-widest">NPU Accelerated</div>
                         )}
                     </div>
                     <div className="mt-3 text-[9px] text-slate-400 dark:text-slate-500 italic">
-                        {isLocalAiSupported ? 'Hardware acceleration active.' : 'Falling back to Cloud (Gemini 1.5).'}
+                        {isLocalAiSupported ? `Using ${localAiOrigin} for identification and care.` : 'Local AI core not detected on this device.'}
                     </div>
                 </div>
             </div>

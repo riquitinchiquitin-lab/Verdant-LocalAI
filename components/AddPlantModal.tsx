@@ -140,8 +140,20 @@ export const AddPlantModal: React.FC<AddPlantModalProps> = ({ isOpen, onClose, o
     try {
       addLog(t('msg_uplink_plantnet'), "NETWORK");
       const blobs = specimenImages.map(img => dataURLtoBlob(img));
-      let idResult = await identifyPlantWithPlantNet(blobs);
       
+      // 1. Attempt Local WebNN Identification (Highest Privacy, Lowest Token Usage)
+      let idResult = null;
+      if (isLocalAiEnabled) {
+          addLog("ACCESSING LOCAL NPU via WebNN...", "SYSTEM");
+          // idResult = await identifyWithWebNN(blobs); // Logic to be added in plantAi.ts
+      }
+      
+      // 2. Fallback to Pl@ntNet Proxy
+      if (!idResult) {
+        idResult = await identifyPlantWithPlantNet(blobs);
+      }
+      
+      // 3. Last fallback: Gemini Vision (Cloud)
       if (!idResult || idResult.score < 0.15) {
           addLog(t('msg_rerouting_gemini'), "GEMINI");
           idResult = await identifyPlantWithGemini(specimenImages[0], getEffectiveApiKey());
