@@ -5,7 +5,8 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useSystem } from '../context/SystemContext';
 import { API_URL } from '../constants';
-import { Activity, Cpu, Database, Key, Brain } from 'lucide-react';
+import { Activity, Cpu, Database, Key, Brain, Info } from 'lucide-react';
+import { isLocalAiThrottled } from '../services/LocalAiService';
 
 interface LocalAiStatus {
     isSupported: boolean;
@@ -208,15 +209,23 @@ export const SystemTelemetry: React.FC<SystemTelemetryProps> = ({ showUsage = tr
                         <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">On-Device AI</span>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-tight ${isLocalAiSupported ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
-                            {isLocalAiSupported ? `Active (${localAiOrigin})` : 'Offline'}
+                        <div className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-tight ${isLocalAiSupported && !isLocalAiThrottled() ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
+                            {isLocalAiThrottled() ? 'Quota Exceeded' : (isLocalAiSupported ? `Active (${localAiOrigin})` : 'Offline')}
                         </div>
-                        {isLocalAiSupported && localAiOrigin === 'WEBNN' && (
+                        {isLocalAiSupported && localAiOrigin === 'WEBNN' && !isLocalAiThrottled() && (
                             <div className="text-[8px] font-black text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded uppercase tracking-widest">NPU Accelerated</div>
+                        )}
+                        {isLocalAiThrottled() && (
+                            <div className="flex items-center gap-1 text-[8px] font-black text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded uppercase tracking-widest animate-pulse">
+                                <Info className="w-2 h-2" />
+                                Storage Full
+                            </div>
                         )}
                     </div>
                     <div className="mt-3 text-[9px] text-slate-400 dark:text-slate-500 italic">
-                        {isLocalAiSupported ? `Using ${localAiOrigin} for identification and care.` : 'Local AI core not detected on this device.'}
+                        {isLocalAiThrottled() 
+                          ? 'Device has insufficient storage to cache Local AI model (1.5GB required).' 
+                          : (isLocalAiSupported ? `Using ${localAiOrigin} for identification and care.` : 'Local AI core not detected on this device.')}
                     </div>
                 </div>
             </div>

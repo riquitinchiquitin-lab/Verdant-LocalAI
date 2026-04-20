@@ -31,24 +31,40 @@ export const checkLocalAiSupport = async (): Promise<LocalAiCapabilities> => {
   return { isSupported: false, origin: 'NONE', status: 'NONE' };
 };
 
+let isLocalDisabledForSession = false;
+
+export const isLocalAiThrottled = () => isLocalDisabledForSession;
+
 export const initWebLlm = async (onProgress?: (progress: number) => void): Promise<void> => {
   if (webLlmEngine) return;
+  if (isLocalDisabledForSession) {
+    throw new Error("LOCAL_AI_THROTTLED_SESSION");
+  }
   
-  // Dynamic import to prevent crash on older browsers/iOS Safari during boot
-  const webllm = await import("@mlc-ai/web-llm");
-  webLlmEngine = new webllm.MLCEngine();
-  webLlmEngine.setInitProgressCallback((report: any) => {
-    console.log("[WEBGPU] Init:", report.text);
-    if (onProgress) {
-        // Parse progress from report.text if possible or use a default shim
-        const match = report.text.match(/\[(\d+)\/(\d+)\]/);
-        if (match) {
-            onProgress(parseInt(match[1]) / parseInt(match[2]));
-        }
-    }
-  });
+  try {
+    const webllm = await import("@mlc-ai/web-llm");
+    webLlmEngine = new webllm.MLCEngine();
+    webLlmEngine.setInitProgressCallback((report: any) => {
+      console.log("[WEBGPU] Init:", report.text);
+      if (onProgress) {
+          const match = report.text.match(/\[(\d+)\/(\d+)\]/);
+          if (match) {
+              onProgress(parseInt(match[1]) / parseInt(match[2]));
+          }
+      }
+    });
 
-  await webLlmEngine.reload(SELECTED_MODEL);
+    await webLlmEngine.reload(SELECTED_MODEL);
+  } catch (e: any) {
+    webLlmEngine = null;
+    const isQuota = e.name === 'QuotaExceededError' || e.message?.includes('quota') || e.message?.includes('storage');
+    if (isQuota) {
+      isLocalDisabledForSession = true;
+      console.error("[LOCAL_AI] Storage Quota Exceeded. Disabling local AI for this session to prevent repeated failures.");
+      throw new Error("LOCAL_STORAGE_QUOTA_EXCEEDED");
+    }
+    throw e;
+  }
 };
 
 const estimateTokens = (text: string): number => {
@@ -57,15 +73,17 @@ const estimateTokens = (text: string): number => {
 };
 
 export const runLocalAiPrompt = async (prompt: string, systemPrompt?: string): Promise<string> => {
-  // WebNN prompt logic would go here if an LLM is used with WebNN
-  // Currently, WebNN is best for vision models (classification/detection)
-  
+  if (isLocalDisabledForSession) {
+    throw new Error("LOCAL_AI_THROTTLED_SESSION");
+  }
+
   // 1. Fallback to WebLLM (WebGPU-based LLM)
   if (!webLlmEngine) {
     try {
        await initWebLlm();
-    } catch (e) {
-       console.error("Local LLM Init failed:", e);
+    } catch (e: any) {
+       console.warn("Local AI Init failed:", e.message);
+       throw e;
     }
   }
 

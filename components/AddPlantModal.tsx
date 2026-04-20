@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
-import { identifyPlantWithPlantNet, generatePlantDetails, createPlant } from '../services/plantAi';
+import { identifyPlantWithPlantNet, identifyPlantWithGemini, generatePlantDetails, createPlant } from '../services/plantAi';
 import { translateInput } from '../services/translationService';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -141,11 +141,18 @@ export const AddPlantModal: React.FC<AddPlantModalProps> = ({ isOpen, onClose, o
       addLog(t('msg_uplink_plantnet'), "NETWORK");
       const blobs = specimenImages.map(img => dataURLtoBlob(img));
       
-      // Primary & Exclusive Authority: Pl@ntNet 
+      // Primary Authority: Pl@ntNet 
       let idResult = await identifyPlantWithPlantNet(blobs);
       
+      // Fallback: Gemini Vision (Cloud) 
+      // Only used if PlantNet fails to find a match, ensuring the app remains functional.
       if (!idResult) {
-          throw new Error("PLANTNET_SERVICE_FAULT: No specimen matches found in global archives.");
+          addLog(t('msg_rerouting_gemini'), "GEMINI");
+          idResult = await identifyPlantWithGemini(specimenImages[0], getEffectiveApiKey());
+      }
+      
+      if (!idResult) {
+          throw new Error("ARCHIVE_FAULT: No specimen matches found in any botanical archives.");
       }
 
       if (!idResult) throw new Error(t('msg_uplink_fault'));
