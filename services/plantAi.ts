@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { API_URL, getGeminiApiKey } from '../constants';
 import { Plant, LocalizedString, LocalizedArray } from '../types';
+import { fetchWithAuth } from './api';
 import { fetchTrefleData, fetchOpenPlantBookData, fetchPerenualData, searchGroundingData } from './botanicalServices';
 import { trackUsage } from './usageService';
 import { generateUUID } from './crypto';
@@ -141,6 +142,39 @@ export const identifyPlantWithGemini = async (base64: string, apiKey?: string): 
 };
 
 /**
+ * Archives botanical data to the species registry (Server-side persistence)
+ */
+export const saveBotanicalArchive = async (species: string, data: any): Promise<void> => {
+    try {
+        const storedUser = localStorage.getItem('verdant_user');
+        if (!storedUser) return;
+        const { personalAiKey } = JSON.parse(storedUser);
+        await fetchWithAuth('/api/botanical', personalAiKey || 'none', {
+            method: 'POST',
+            body: JSON.stringify({ species, data })
+        });
+    } catch (e) {
+        console.warn("[DB] Archive save failed:", e);
+    }
+};
+
+/**
+ * Retrieves botanical data from the species registry
+ */
+export const getBotanicalArchive = async (species: string): Promise<any | null> => {
+    try {
+        const storedUser = localStorage.getItem('verdant_user');
+        if (!storedUser) return null;
+        const { personalAiKey } = JSON.parse(storedUser);
+        const response = await fetchWithAuth(`/api/botanical/search?species=${encodeURIComponent(species)}`, personalAiKey || 'none');
+        if (response.ok) return await response.json();
+    } catch (e) {
+        // 404 is expected if never seen before
+    }
+    return null;
+};
+
+/**
  * 3. Synthesis & Harmonization
  */
 export const generatePlantDetails = async (
@@ -151,6 +185,17 @@ export const generatePlantDetails = async (
   isLocalEnabled: boolean = false
 ): Promise<Partial<Plant>> => {
   const key = apiKey || getGeminiApiKey();
+
+  // 0. Check Botanical Archive (Reusable Data)
+  onLog?.("Looking for species in local botanical archives...", "NETWORK");
+  const archived = await getBotanicalArchive(scientificName);
+  if (archived) {
+    onLog?.("Botanical profile recovered from registry.", "DB");
+    return createPlant({
+      ...archived,
+      images: base64Image ? [base64Image] : []
+    });
+  }
   
   // 1. Fetch Technical Data Sources (No Tokens)
   onLog?.("msg_accessing_archives", "NETWORK");
@@ -207,14 +252,19 @@ export const generatePlantDetails = async (
     try {
       const localHarmonized = await harmonizePlantDataLocal(scientificName, rawData);
       
-      if (localHarmonized) {
+        if (localHarmonized) {
         console.info(`[NPU] Harmonized ${scientificName} successfully (Saved Tokens)`);
-        return createPlant({
+        const plant = createPlant({
           ...localHarmonized,
           trefleId: trefle?.id,
           opbId: opb?.pid,
           images: base64Image ? [base64Image] : []
         });
+
+        // Save to botanical archives for reuse
+        await saveBotanicalArchive(scientificName, plant);
+        
+        return plant;
       }
     } catch (e) {
       console.warn("[NPU] Local harmonization fault, falling back to Cloud:", e);
@@ -348,12 +398,17 @@ export const generatePlantDetails = async (
     }
 
     const parsed = JSON.parse(cleanJson(response.text || "{}"));
-    return createPlant({
+    const plant = createPlant({
         ...parsed,
         trefleId: trefle?.id,
         opbId: opb?.pid,
         images: base64Image ? [base64Image] : []
     });
+
+    // Save to botanical archives for reuse
+    await saveBotanicalArchive(scientificName, plant);
+
+    return plant;
   } catch (error: any) {
     onLog?.(`Uplink Error: ${error.message}`, "DEBUG");
     throw error;

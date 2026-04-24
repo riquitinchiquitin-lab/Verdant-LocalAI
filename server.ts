@@ -646,6 +646,27 @@ app.delete('/api/plants/:id', checkAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: "DB_FAULT" }); }
 });
 
+// BOTANICAL ARCHIVES
+app.get('/api/botanical/search', checkAuth, async (req, res) => {
+  try {
+    const { species } = req.query;
+    if (!species) return res.status(400).json({ error: "SPECIES_REQUIRED" });
+    const result = await query('SELECT * FROM botanical_archives WHERE LOWER(species) = ?', [String(species).toLowerCase()]);
+    if (result.rows.length === 0) return res.status(404).json({ error: "NOT_FOUND" });
+    res.json(JSON.parse(result.rows[0].data));
+  } catch (e) { res.status(500).json({ error: "DB_FAULT" }); }
+});
+
+app.post('/api/botanical', checkAuth, async (req, res) => {
+  try {
+    const { species, data } = req.body;
+    if (!species || !data) return res.status(400).json({ error: "INVALID_DATA" });
+    await query('INSERT OR REPLACE INTO botanical_archives (species, data, updatedAt) VALUES (?, ?, ?)',
+      [species, JSON.stringify(data), new Date().toISOString()]);
+    res.json({ status: "ok" });
+  } catch (e) { res.status(500).json({ error: "DB_FAULT" }); }
+});
+
 // HOUSES
 app.get('/api/houses', checkAuth, async (req, res) => {
   try {
@@ -977,6 +998,7 @@ async function initializeDatabase() {
     `CREATE TABLE IF NOT EXISTS tasks (id TEXT PRIMARY KEY, houseId TEXT, plantIds TEXT, type TEXT, title TEXT, description TEXT, date TEXT, completed INTEGER, completedAt TEXT, recurrence TEXT, data TEXT)`,
     `CREATE TABLE IF NOT EXISTS inventory (id TEXT PRIMARY KEY, houseId TEXT, name TEXT, data TEXT)`,
     `CREATE TABLE IF NOT EXISTS system_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, event TEXT, details TEXT, level TEXT, created_at TEXT)`,
+    `CREATE TABLE IF NOT EXISTS botanical_archives (species TEXT PRIMARY KEY, data TEXT, updatedAt TEXT)`,
     `CREATE TABLE IF NOT EXISTS api_usage (
       id TEXT PRIMARY KEY, 
       gemini_count INTEGER DEFAULT 0,
