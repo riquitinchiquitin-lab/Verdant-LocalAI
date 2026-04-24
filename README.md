@@ -17,9 +17,17 @@ Verdant is a high-precision botanical management system designed for professiona
 ### 3. Hybrid AI Architecture
 - **Cloud Intelligence (Gemini)**: Leverages Google Gemini Cloud for expert pruning advice and complex vision analysis.
 - **Local On-Device AI**: Utilizes **Gemini Nano** or **WebGPU** for instant, private data synthesis, translation, and health diagnosis. No cloud tokens required for daily logic.
-- **Automated Identification**: Sync specimen data using Pl@ntNet vision, then refine and harmonize the record using the local high-performance model.
+- **Automated Identification**: Sync specimen data using **Pl@ntNet** vision (via local proxy), then refine and harmonize the record using the local high-performance model.
 
-### 4. Multi-Property Infrastructure
+### 4. Botanical Data Pipeline (Step-by-Step)
+When adding a plant, Verdant follows a strict 5-stage protocol to ensure data accuracy and token economy:
+1. **Visual Capture**: Multi-specimen image processing.
+2. **Identification (Pl@ntNet)**: Secure relay to the Pl@ntNet identification engine.
+3. **Archive Deep-Dive**: Parallel retrieval from Trefle, OpenPlantBook, and Perenual.
+4. **Local Harmonization**: On-device synthesis of technical data into a unified care plan.
+5. **Local Translation**: Instant 11-language localization via your device's NPU, saving thousands of cloud tokens per operation.
+
+### 5. Multi-Property Infrastructure
 - **Property Isolation**: Manage multiple houses or properties within a single interface.
 - **Role-Based Access Control (RBAC)**: 
   - **Owner/CO-CEO**: Full system access and property management.

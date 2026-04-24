@@ -398,7 +398,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto no-scrollbar pb-[env(safe-area-inset-bottom,4rem)] print:pb-0 print:overflow-visible bg-white dark:bg-slate-950">
+        <div className="flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom,6rem)] print:pb-0 print:overflow-visible bg-white dark:bg-slate-950">
             <div className="max-w-7xl mx-auto pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] p-6 md:p-10">
               <AnimatePresence mode="wait">
                 <motion.div
@@ -414,36 +414,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             </div>
         </div>
 
-        {/* MOBILE FLOATING ACTION BUTTON */}
-        <div className="lg:hidden fixed bottom-8 right-6 z-[100] flex flex-col items-end gap-3 pointer-events-none">
-          <AnimatePresence>
-            {!isAddModalOpen && !isScannerOpen && (
-              <motion.div 
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0, opacity: 0 }}
-                className="pointer-events-auto flex flex-col items-end gap-4"
-              >
-                {can('create_plants') && (
-                  <button
-                    onClick={() => setIsScannerOpen(true)}
-                    className="w-12 h-12 bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 rounded-2xl shadow-2xl flex items-center justify-center text-slate-500 hover:text-verdant active:scale-95 transition-all"
-                  >
-                    <QrCode className="w-5 h-5" />
-                  </button>
-                )}
-                <button
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="w-16 h-16 bg-verdant text-white rounded-[24px] shadow-2xl shadow-verdant/30 flex items-center justify-center active:scale-95 transition-all relative group overflow-hidden border border-emerald-400/50"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-tr from-black/10 to-transparent pointer-events-none" />
-                  <Plus className="w-8 h-8 relative z-10" />
-                  <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        {/* MOBILE FLOATING ACTION BUTTON REMOVED BY USER REQUEST */}
       </main>
     </div>
   );

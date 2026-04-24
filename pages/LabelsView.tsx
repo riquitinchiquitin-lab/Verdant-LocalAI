@@ -55,7 +55,7 @@ export const LabelsView: React.FC = () => {
     (val || fallback).replace(/\|/g, '').trim();
 
   return (
-    <div className="p-4 md:p-10 max-w-6xl mx-auto space-y-6 md:space-y-10 pb-32">
+    <div className="p-4 md:p-10 max-w-6xl mx-auto space-y-6 md:space-y-10 pb-64">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-6">
         <div>
           <h1 className="text-2xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tighter uppercase leading-none">{t('menu_labels')}</h1>
@@ -113,8 +113,8 @@ export const LabelsView: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-[24px] md:rounded-[40px] border border-gray-100 dark:border-slate-800 overflow-hidden shadow-sm">
-        <div className="overflow-x-auto no-scrollbar touch-pan-x">
+      <div className="bg-white dark:bg-slate-900 rounded-[24px] md:rounded-[40px] border border-gray-100 dark:border-slate-800 shadow-sm">
+        <div className="overflow-x-auto touch-pan-x">
           <table className="w-full text-left border-collapse min-w-[600px] md:min-w-0">
             <thead>
               <tr className="bg-gray-50 dark:bg-slate-800/50">

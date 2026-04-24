@@ -107,20 +107,22 @@ export const runLocalAiPrompt = async (prompt: string, systemPrompt?: string): P
   throw new Error("Local AI not supported or initialized");
 };
 
-export const translateTextLocal = async (text: string, targetLangs: string[]): Promise<Record<string, string>> => {
-  const systemPrompt = `You are a translation engine. Translate the input text into these languages: ${targetLangs.join(', ')}. Return ONLY a JSON object where keys are language codes and values are translations.`;
+export const translateTextLocal = async (text: string, targetLangs: string[], sourceLang: string = 'en'): Promise<Record<string, string>> => {
+  const systemPrompt = `You are a professional translation engine. Translate the input text from ${sourceLang} into these languages: ${targetLangs.join(', ')}. Return ONLY a clean JSON object where keys are language codes and values are the TRANSLATED strings. Do not include explanations.`;
   const response = await runLocalAiPrompt(text, systemPrompt);
   
   const results: Record<string, string> = {};
-  const jsonMatch = response.match(/\{.*\}/s);
+  const jsonMatch = response.match(/\{[\s\S]*\}/s);
   if (jsonMatch) {
     try {
-      const parsed = JSON.parse(jsonMatch[0]);
+      // Clean possible markdown backticks
+      const cleanJson = jsonMatch[0].replace(/```json/g, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleanJson);
       targetLangs.forEach(lang => {
         if (parsed[lang]) results[lang] = parsed[lang];
       });
     } catch (e) {
-      console.error("Local translation JSON parse fault:", e);
+      console.error("Local translation JSON parse fault:", e, "Raw:", response);
     }
   }
   return results;

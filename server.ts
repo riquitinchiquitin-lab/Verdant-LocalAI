@@ -366,18 +366,34 @@ app.post('/api/system/track-usage', checkAuth, async (req, res) => {
 // BOTANICAL PROXY CLUSTER
 app.post('/api/proxy/identify', checkAuth, upload.array('images'), async (req, res) => {
   try {
+    const apiKey = process.env.PLANTNET_API_KEY;
+    if (!apiKey || apiKey === 'your-plantnet-api-key') {
+      console.warn('[PROXY] PlantNet API key is missing or default. Identification will fail.');
+      return res.status(401).json({ error: "PLANTNET_KEY_MISSING", details: "Please configure PLANTNET_API_KEY in your environment variables." });
+    }
+
     const files = req.files as Express.Multer.File[];
     const formData = new FormData();
     files.forEach(file => {
       formData.append('images', file.buffer, { filename: file.originalname, contentType: file.mimetype });
     });
-    const response = await fetch(`https://my-api.plantnet.org/v2/identify/all?api-key=${process.env.PLANTNET_API_KEY}`, {
+
+    console.log(`[PROXY] Relaying identification request to Pl@ntNet (${files.length} specimens)`);
+    const response = await fetch(`https://my-api.plantnet.org/v2/identify/all?api-key=${apiKey}`, {
       method: 'POST',
       body: formData
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[PROXY] Pl@ntNet Error ${response.status}:`, errorText);
+      return res.status(response.status).json({ error: "PLANTNET_UPSTREAM_FAULT", details: errorText });
+    }
+
     const data = await response.json();
     res.json(data);
   } catch (e) {
+    console.error("[PROXY] PlantNet Proxy Unexpected Fault:", e);
     res.status(500).json({ error: "PLANTNET_PROXY_FAULT" });
   }
 });

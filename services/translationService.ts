@@ -58,10 +58,22 @@ const executeTranslation = async (text: string, sourceLang: string, apiKey?: str
   try {
     const isLocalEnabled = localStorage.getItem('verdant-local-ai') === 'true';
     if (isLocalEnabled) {
-      console.info("[LOCAL_AI] Attempting Local Translation via NPU/GPU...");
-      const localResult = await translateTextLocal(text, TARGET_LANGS);
+      console.info(`[LOCAL_AI] Attempting Local Translation (${sourceLang} -> ${TARGET_LANGS.length} langs) via NPU/GPU...`);
+      // Filter out source language to avoid unnecessary compute
+      const langsToTranslate = TARGET_LANGS.filter(l => l !== sourceLang);
+      const localResult = await translateTextLocal(text, langsToTranslate, sourceLang);
+      
       if (localResult && Object.keys(localResult).length > 0) {
-        return localResult as LocalizedString;
+        // Build full object
+        const fullResult: any = { ...localResult };
+        fullResult[sourceLang] = text; // Keep original for source
+        
+        // Fill gaps if any
+        TARGET_LANGS.forEach(lang => {
+           if (!fullResult[lang]) fullResult[lang] = text; 
+        });
+        
+        return fullResult as LocalizedString;
       }
     }
   } catch (e) {
