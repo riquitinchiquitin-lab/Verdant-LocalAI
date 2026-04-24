@@ -208,21 +208,7 @@ export const Dashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* QUICK STATUS TICKER */}
-            <div className="flex flex-wrap gap-3">
-                <div className="px-5 py-2.5 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 flex items-center gap-3 group hover:border-amber-200 transition-colors cursor-pointer">
-                    <div className={`w-2 h-2 rounded-full ${thirstyCount > 0 ? 'bg-amber-500 animate-[pulse_1.5s_infinite] shadow-[0_0_8px_rgba(245,158,11,0.6)]' : 'bg-emerald-500'}`} />
-                    <span className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest font-mono">
-                      {thirstyCount > 0 ? `HYDRATION_DEFICIT: ${thirstyCount}_UNITS` : 'WATER_CORE: STABLE'}
-                    </span>
-                </div>
-                <div className="px-5 py-2.5 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-white/5 flex items-center gap-3">
-                    <Server className="w-3.5 h-3.5 text-blue-500" />
-                    <span className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest font-mono">
-                      SRV_NODE: US-EAST-1/PRX-01
-                    </span>
-                </div>
-            </div>
+
         </div>
 
         <PlantTelemetry mode="stats" />
