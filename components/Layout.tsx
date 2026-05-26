@@ -8,6 +8,8 @@ import { Logo } from './ui/Logo';
 import { LanguageSelector } from './ui/LanguageSelector';
 import { AddPlantModal } from './AddPlantModal';
 import { QrScannerModal } from './QrScannerModal';
+import { PlantDetailsModal } from './PlantDetailsModal';
+import { Plant } from '../types';
 import { generatePlantDetails } from '../services/plantAi';
 import { generateUUID } from '../services/crypto';
 import { Button } from './ui/Button';
@@ -145,7 +147,7 @@ import { ThemeToggle } from './ThemeToggle';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { logout, user, can } = useAuth();
-  const { alertMessage, setAlertMessage, searchFilter, setSearchFilter, addPlant, getEffectiveApiKey } = usePlants();
+  const { alertMessage, setAlertMessage, searchFilter, setSearchFilter, addPlant, getEffectiveApiKey, plants } = usePlants();
   const { t, lv } = useLanguage();
   const { showNotification, isLocalAiEnabled } = useSystem();
   const location = useLocation();
@@ -153,6 +155,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const [showInstallBtn, setShowInstallBtn] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [selectedPlant, setSelectedPlant] = useState<Plant | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
@@ -161,9 +164,27 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const handleScanSuccess = async (data: string) => {
     setIsScannerOpen(false);
+
+    // 1. Direct match by raw data ID
+    const existingDirect = plants.find(p => p.id === data);
+    if (existingDirect) {
+      setSelectedPlant(existingDirect);
+      showNotification("PLANT FOUND IN REPOSITORY", "SUCCESS");
+      return;
+    }
+
     const parts = data.split('|');
     if (parts.length >= 3) {
       const [sourceHouse, sourceId, species, family] = parts;
+
+      // 2. Match by sourceId from split QR data
+      const existingPlant = plants.find(p => p.id === sourceId);
+      if (existingPlant) {
+        setSelectedPlant(existingPlant);
+        showNotification("PLANT FOUND IN REPOSITORY", "SUCCESS");
+        return;
+      }
+
       setIsSyncing(true);
       showNotification("SYNCING SPECIMEN...", "INFO");
       try {
@@ -181,6 +202,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           logs: []
         };
         await addPlant(syncedPlant as any);
+        setSelectedPlant(syncedPlant as any);
         showNotification("SYNC SUCCESS", "SUCCESS");
       } catch (err) {
         showNotification("SYNC FAILED", "ERROR");
@@ -255,6 +277,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       <aside className={`fixed lg:static inset-y-0 left-0 w-72 bg-white dark:bg-slate-950 border-r border-gray-100 dark:border-slate-800 z-50 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform duration-300 flex flex-col no-print pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]`}>
         <AddPlantModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onSave={addPlant} />
         <QrScannerModal isOpen={isScannerOpen} onClose={() => setIsScannerOpen(false)} onScanSuccess={handleScanSuccess} />
+        <PlantDetailsModal isOpen={!!selectedPlant} plant={selectedPlant} onClose={() => setSelectedPlant(null)} />
 
         <div className="p-8 pb-4">
           <Link to="/" className="flex items-center gap-4 group" onClick={() => setIsSidebarOpen(false)}>

@@ -10,7 +10,7 @@ export const LabelsView: React.FC = () => {
   const { t, lv } = useLanguage();
   const { user } = useAuth();
   
-  const [selectedHouseId, setSelectedHouseId] = useState<string>(user?.houseId || 'ALL');
+  const [selectedHouseId, setSelectedHouseId] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -20,7 +20,7 @@ export const LabelsView: React.FC = () => {
     return plants.filter(p => {
       const matchesHouse = selectedHouseId === 'ALL' || p.houseId === selectedHouseId;
       const matchesSearch = lv(p.nickname).toLowerCase().includes(searchQuery.toLowerCase()) || 
-                           p.species.toLowerCase().includes(searchQuery.toLowerCase());
+                           (p.species || '').toLowerCase().includes(searchQuery.toLowerCase());
       return matchesHouse && matchesSearch;
     });
   }, [plants, selectedHouseId, searchQuery, lv]);
@@ -114,7 +114,7 @@ export const LabelsView: React.FC = () => {
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-[24px] md:rounded-[40px] border border-gray-100 dark:border-slate-800 shadow-sm">
-        <div className="overflow-x-auto touch-pan-x">
+        <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[600px] md:min-w-0">
             <thead>
               <tr className="bg-gray-50 dark:bg-slate-800/50">

@@ -90,37 +90,53 @@ export const Dashboard: React.FC = () => {
   const handleScanSuccess = async (data: string) => {
     setIsScannerOpen(false);
     
+    // 1. Direct match by raw data ID
+    const existingDirect = plants.find(p => p.id === data);
+    if (existingDirect) {
+      setSelectedPlant(existingDirect);
+      showNotification("PLANT FOUND IN REPOSITORY", "SUCCESS");
+      return;
+    }
+
     const parts = data.split('|');
     if (parts.length >= 3) {
       const [sourceHouse, sourceId, species, family] = parts;
       
-    setIsSyncing(true);
-    showNotification("SYNCING SPECIMEN...", "INFO");
-    try {
-      const details = await generatePlantDetails(species, undefined, undefined, getEffectiveApiKey(), isLocalAiEnabled);
-      
-      const syncedPlant: Plant = {
-          ...details,
-          id: `p-synced-${generateUUID()}`,
-          species: species,
-          family: family || details.family,
-          houseId: user?.houseId || null, 
-          createdAt: new Date().toISOString(),
-          nickname: details.nickname || { en: species },
-          images: details.images?.length ? details.images : ['https://images.unsplash.com/photo-1545239351-ef35f43d514b?q=80&w=1000&auto=format&fit=crop'],
-          edible: details.edible || false,
-          logs: []
-        } as Plant;
-
-        await addPlant(syncedPlant);
-        setSelectedPlant(syncedPlant);
-        showNotification("SYNC SUCCESS", "SUCCESS");
-      } catch (err) {
-        console.error("Botanical Sync Failure:", err);
-        showNotification("SYNC FAILED", "ERROR");
-      } finally {
-        setIsSyncing(false);
+      // 2. Match by sourceId from split QR data
+      const existingPlant = plants.find(p => p.id === sourceId);
+      if (existingPlant) {
+        setSelectedPlant(existingPlant);
+        showNotification("PLANT FOUND IN REPOSITORY", "SUCCESS");
+        return;
       }
+
+      setIsSyncing(true);
+      showNotification("SYNCING SPECIMEN...", "INFO");
+      try {
+        const details = await generatePlantDetails(species, undefined, undefined, getEffectiveApiKey(), isLocalAiEnabled);
+        
+        const syncedPlant: Plant = {
+            ...details,
+            id: `p-synced-${generateUUID()}`,
+            species: species,
+            family: family || details.family,
+            houseId: user?.houseId || null, 
+            createdAt: new Date().toISOString(),
+            nickname: details.nickname || { en: species },
+            images: details.images?.length ? details.images : ['https://images.unsplash.com/photo-1545239351-ef35f43d514b?q=80&w=1000&auto=format&fit=crop'],
+            edible: details.edible || false,
+            logs: []
+          } as Plant;
+
+          await addPlant(syncedPlant);
+          setSelectedPlant(syncedPlant);
+          showNotification("SYNC SUCCESS", "SUCCESS");
+        } catch (err) {
+          console.error("Botanical Sync Failure:", err);
+          showNotification("SYNC FAILED", "ERROR");
+        } finally {
+          setIsSyncing(false);
+        }
     } else {
       showNotification("INVALID SYNC ID", "WARNING");
     }

@@ -81,7 +81,7 @@ export const InventoryView: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex py-2 md:py-3 sticky top-0 z-30 -mx-2 px-2 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md rounded-b-2xl md:rounded-b-3xl overflow-x-auto no-scrollbar flex-nowrap md:flex-wrap gap-1.5 md:gap-2 touch-pan-x border-b border-gray-100 dark:border-slate-800 md:border-none">
+      <div className="flex py-2 md:py-3 sticky top-0 z-30 -mx-2 px-2 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md rounded-b-2xl md:rounded-b-3xl overflow-x-auto no-scrollbar flex-nowrap md:flex-wrap gap-1.5 md:gap-2 border-b border-gray-100 dark:border-slate-800 md:border-none">
         {categories.map(cat => (
           <button
             key={cat}
