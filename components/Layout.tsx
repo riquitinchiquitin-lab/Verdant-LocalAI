@@ -164,26 +164,26 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const handleScanSuccess = async (data: string) => {
     setIsScannerOpen(false);
+    const trimmedData = data.trim();
 
-    // 1. Direct match by raw data ID
-    const existingDirect = plants.find(p => p.id === data);
-    if (existingDirect) {
-      setSelectedPlant(existingDirect);
+    // 1. Match by whole ID or any of the parts from split QR data
+    const trimmedParts = trimmedData.split('|').map(p => p.trim());
+    const matchedPlant = plants.find(p => 
+      p.id.toLowerCase() === trimmedData.toLowerCase() || 
+      trimmedParts.some(part => p.id.toLowerCase() === part.toLowerCase())
+    );
+
+    if (matchedPlant) {
+      setSelectedPlant(matchedPlant);
       showNotification("PLANT FOUND IN REPOSITORY", "SUCCESS");
       return;
     }
 
-    const parts = data.split('|');
-    if (parts.length >= 3) {
-      const [sourceHouse, sourceId, species, family] = parts;
-
-      // 2. Match by sourceId from split QR data
-      const existingPlant = plants.find(p => p.id === sourceId);
-      if (existingPlant) {
-        setSelectedPlant(existingPlant);
-        showNotification("PLANT FOUND IN REPOSITORY", "SUCCESS");
-        return;
-      }
+    if (trimmedParts.length >= 3) {
+      const sourceHouse = trimmedParts[0];
+      const sourceId = trimmedParts[1];
+      const species = trimmedParts[2];
+      const family = trimmedParts[3] || '';
 
       setIsSyncing(true);
       showNotification("SYNCING SPECIMEN...", "INFO");
@@ -213,6 +213,24 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       showNotification("INVALID SYNC ID", "WARNING");
     }
   };
+
+  // Auto-open plant details if QR format or plant ID is entered in searchFilter
+  useEffect(() => {
+    const f = searchFilter.trim();
+    if (!f) return;
+
+    const trimmedParts = f.split('|').map(p => p.trim());
+    const matchedPlant = plants.find(p => 
+      p.id.toLowerCase() === f.toLowerCase() || 
+      trimmedParts.some(part => p.id.toLowerCase() === part.toLowerCase())
+    );
+
+    if (matchedPlant) {
+      setSelectedPlant(matchedPlant);
+      setSearchFilter('');
+      showNotification("PLANT FOUND VIA QR SEARCH", "SUCCESS");
+    }
+  }, [searchFilter, plants, setSearchFilter, showNotification]);
 
   useEffect(() => {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;

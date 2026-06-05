@@ -22,7 +22,7 @@ export const Dashboard: React.FC = () => {
   const { user, can } = useAuth();
   const { showNotification, isLocalAiEnabled } = useSystem();
   const navigate = useNavigate();
-  const { plants, addPlant, restoreDemoData, houses, getEffectiveApiKey, searchFilter, refreshAllData, isSynced } = usePlants();
+  const { plants, addPlant, restoreDemoData, houses, getEffectiveApiKey, searchFilter, setSearchFilter, refreshAllData, isSynced } = usePlants();
   const { t, lv } = useLanguage();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -61,9 +61,24 @@ export const Dashboard: React.FC = () => {
       
       return false;
     }).filter(p => {
-        const f = searchFilter.toLowerCase();
+        const f = searchFilter.toLowerCase().trim();
         if (!f) return true;
-        return (lv(p.nickname) || '').toLowerCase().includes(f) || (p.species || '').toLowerCase().includes(f);
+        
+        // 1. Basic properties
+        const nameMatch = (lv(p.nickname) || '').toLowerCase().includes(f);
+        const speciesMatch = (p.species || '').toLowerCase().includes(f);
+        const familyMatch = (p.family || '').toLowerCase().includes(f);
+        const idMatch = p.id.toLowerCase().includes(f);
+        if (nameMatch || speciesMatch || familyMatch || idMatch) return true;
+
+        // 2. Constructed QR properties check
+        const houseId = (p.houseId || 'GLOBAL').replace(/\|/g, '').trim().toLowerCase();
+        const plantId = p.id.replace(/\|/g, '').trim().toLowerCase();
+        const species = (p.species || 'SPECIES').replace(/\|/g, '').trim().toLowerCase();
+        const family = (p.family || 'BOTANICAL').replace(/\|/g, '').trim().toLowerCase();
+        const fullQr = `${houseId}|${plantId}|${species}|${family}`.toLowerCase();
+
+        return fullQr.includes(f) || f.includes(plantId);
     });
   }, [plants, user, isAdmin, viewMode, selectedHouseFilter, searchFilter, lv]);
 
@@ -89,27 +104,27 @@ export const Dashboard: React.FC = () => {
 
   const handleScanSuccess = async (data: string) => {
     setIsScannerOpen(false);
+    const trimmedData = data.trim();
     
-    // 1. Direct match by raw data ID
-    const existingDirect = plants.find(p => p.id === data);
-    if (existingDirect) {
-      setSelectedPlant(existingDirect);
+    // 1. Match by whole ID or any of the parts from split QR data
+    const trimmedParts = trimmedData.split('|').map(p => p.trim());
+    const matchedPlant = plants.find(p => 
+      p.id.toLowerCase() === trimmedData.toLowerCase() || 
+      trimmedParts.some(part => p.id.toLowerCase() === part.toLowerCase())
+    );
+
+    if (matchedPlant) {
+      setSelectedPlant(matchedPlant);
       showNotification("PLANT FOUND IN REPOSITORY", "SUCCESS");
       return;
     }
 
-    const parts = data.split('|');
-    if (parts.length >= 3) {
-      const [sourceHouse, sourceId, species, family] = parts;
+    if (trimmedParts.length >= 3) {
+      const sourceHouse = trimmedParts[0];
+      const sourceId = trimmedParts[1];
+      const species = trimmedParts[2];
+      const family = trimmedParts[3] || '';
       
-      // 2. Match by sourceId from split QR data
-      const existingPlant = plants.find(p => p.id === sourceId);
-      if (existingPlant) {
-        setSelectedPlant(existingPlant);
-        showNotification("PLANT FOUND IN REPOSITORY", "SUCCESS");
-        return;
-      }
-
       setIsSyncing(true);
       showNotification("SYNCING SPECIMEN...", "INFO");
       try {
@@ -141,6 +156,24 @@ export const Dashboard: React.FC = () => {
       showNotification("INVALID SYNC ID", "WARNING");
     }
   };
+
+  // Auto-open plant details if QR format or plant ID is entered in searchFilter
+  React.useEffect(() => {
+    const f = searchFilter.trim();
+    if (!f) return;
+
+    const trimmedParts = f.split('|').map(p => p.trim());
+    const matchedPlant = plants.find(p => 
+      p.id.toLowerCase() === f.toLowerCase() || 
+      trimmedParts.some(part => p.id.toLowerCase() === part.toLowerCase())
+    );
+
+    if (matchedPlant) {
+      setSelectedPlant(matchedPlant);
+      setSearchFilter('');
+      showNotification("PLANT FOUND VIA QR SEARCH", "SUCCESS");
+    }
+  }, [searchFilter, plants, setSearchFilter, showNotification]);
 
   const thirstyCount = useMemo(() => {
     return plants.filter(p => {
