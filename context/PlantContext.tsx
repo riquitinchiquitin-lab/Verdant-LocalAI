@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Plant, Log, Task, House, LocalizedString } from '../types';
+import { Plant, Log, Task, House, LocalizedString, InventoryItem } from '../types';
 import { ROOM_TYPES, getGeminiApiKey } from '../constants';
 import { fetchWithAuth } from '../services/api';
 import { useAuth } from './AuthContext';
@@ -41,6 +41,12 @@ interface PlantContextType {
   setAlertMessage: (message: string | null) => void;
   searchFilter: string;
   setSearchFilter: (filter: string) => void;
+  selectedPlant: Plant | null;
+  setSelectedPlant: (plant: Plant | null) => void;
+  selectedInventoryItem: InventoryItem | null;
+  setSelectedInventoryItem: (item: InventoryItem | null) => void;
+  isScannerOpen: boolean;
+  setIsScannerOpen: (open: boolean) => void;
 }
 
 const PlantContext = createContext<PlantContextType | undefined>(undefined);
@@ -57,6 +63,9 @@ export const PlantProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [isPersistenceReady, setIsPersistenceReady] = useState(false);
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
   const [searchFilter, setSearchFilter] = useState('');
+  const [selectedPlant, setSelectedPlant] = useState<Plant | null>(null);
+  const [selectedInventoryItem, setSelectedInventoryItem] = useState<InventoryItem | null>(null);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   const refreshAllData = useCallback(async () => {
     if (!token) return;
@@ -650,7 +659,13 @@ export const PlantProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         alertMessage,
         setAlertMessage,
         searchFilter,
-        setSearchFilter
+        setSearchFilter,
+        selectedPlant,
+        setSelectedPlant,
+        selectedInventoryItem,
+        setSelectedInventoryItem,
+        isScannerOpen,
+        setIsScannerOpen
     }}>
       {children}
     </PlantContext.Provider>

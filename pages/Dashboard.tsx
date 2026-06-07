@@ -22,11 +22,23 @@ export const Dashboard: React.FC = () => {
   const { user, can } = useAuth();
   const { showNotification, isLocalAiEnabled } = useSystem();
   const navigate = useNavigate();
-  const { plants, addPlant, restoreDemoData, houses, getEffectiveApiKey, searchFilter, setSearchFilter, refreshAllData, isSynced } = usePlants();
+  const { 
+    plants, 
+    addPlant, 
+    restoreDemoData, 
+    houses, 
+    getEffectiveApiKey, 
+    searchFilter, 
+    setSearchFilter, 
+    refreshAllData, 
+    isSynced,
+    selectedPlant,
+    setSelectedPlant,
+    isScannerOpen,
+    setIsScannerOpen
+  } = usePlants();
   const { t, lv } = useLanguage();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [selectedPlant, setSelectedPlant] = useState<Plant | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [viewMode, setViewMode] = useState<'MY_HOUSE' | 'ALL'>('MY_HOUSE');
   const [selectedHouseFilter, setSelectedHouseFilter] = useState<string | 'ALL' | 'UNATTRIBUTED'>('ALL');
@@ -102,79 +114,6 @@ export const Dashboard: React.FC = () => {
     showNotification("EXPORT COMPLETE", "SUCCESS");
   };
 
-  const handleScanSuccess = async (data: string) => {
-    setIsScannerOpen(false);
-    const trimmedData = data.trim();
-    
-    // 1. Match by whole ID or any of the parts from split QR data
-    const trimmedParts = trimmedData.split('|').map(p => p.trim());
-    const matchedPlant = plants.find(p => 
-      p.id.toLowerCase() === trimmedData.toLowerCase() || 
-      trimmedParts.some(part => p.id.toLowerCase() === part.toLowerCase())
-    );
-
-    if (matchedPlant) {
-      setSelectedPlant(matchedPlant);
-      showNotification("PLANT FOUND IN REPOSITORY", "SUCCESS");
-      return;
-    }
-
-    if (trimmedParts.length >= 3) {
-      const sourceHouse = trimmedParts[0];
-      const sourceId = trimmedParts[1];
-      const species = trimmedParts[2];
-      const family = trimmedParts[3] || '';
-      
-      setIsSyncing(true);
-      showNotification("SYNCING SPECIMEN...", "INFO");
-      try {
-        const details = await generatePlantDetails(species, undefined, undefined, getEffectiveApiKey(), isLocalAiEnabled);
-        
-        const syncedPlant: Plant = {
-            ...details,
-            id: `p-synced-${generateUUID()}`,
-            species: species,
-            family: family || details.family,
-            houseId: user?.houseId || null, 
-            createdAt: new Date().toISOString(),
-            nickname: details.nickname || { en: species },
-            images: details.images?.length ? details.images : ['https://images.unsplash.com/photo-1545239351-ef35f43d514b?q=80&w=1000&auto=format&fit=crop'],
-            edible: details.edible || false,
-            logs: []
-          } as Plant;
-
-          await addPlant(syncedPlant);
-          setSelectedPlant(syncedPlant);
-          showNotification("SYNC SUCCESS", "SUCCESS");
-        } catch (err) {
-          console.error("Botanical Sync Failure:", err);
-          showNotification("SYNC FAILED", "ERROR");
-        } finally {
-          setIsSyncing(false);
-        }
-    } else {
-      showNotification("INVALID SYNC ID", "WARNING");
-    }
-  };
-
-  // Auto-open plant details if QR format or plant ID is entered in searchFilter
-  React.useEffect(() => {
-    const f = searchFilter.trim();
-    if (!f) return;
-
-    const trimmedParts = f.split('|').map(p => p.trim());
-    const matchedPlant = plants.find(p => 
-      p.id.toLowerCase() === f.toLowerCase() || 
-      trimmedParts.some(part => p.id.toLowerCase() === part.toLowerCase())
-    );
-
-    if (matchedPlant) {
-      setSelectedPlant(matchedPlant);
-      setSearchFilter('');
-      showNotification("PLANT FOUND VIA QR SEARCH", "SUCCESS");
-    }
-  }, [searchFilter, plants, setSearchFilter, showNotification]);
-
   const thirstyCount = useMemo(() => {
     return plants.filter(p => {
         if (!p.lastWatered || !p.wateringInterval) return false;
@@ -202,8 +141,6 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto pb-20 space-y-8">
         <AddPlantModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onSave={addPlant} />
-        <PlantDetailsModal isOpen={!!selectedPlant} plant={selectedPlant} onClose={() => setSelectedPlant(null)} />
-        <QrScannerModal isOpen={isScannerOpen} onClose={() => setIsScannerOpen(false)} onScanSuccess={handleScanSuccess} />
 
         {/* REFINED SYSTEM HEADER */}
         <div className="px-6 md:px-10 pt-4 flex flex-col gap-8 relative overflow-hidden">

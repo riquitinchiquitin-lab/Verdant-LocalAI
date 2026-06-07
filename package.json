@@ -19,6 +19,7 @@
     "express": "^5.2.1",
     "form-data": "^4.0.5",
     "framer-motion": "^12.34.3",
+    "jsqr": "^1.4.0",
     "lucide-react": "^0.446.0",
     "motion": "^12.38.0",
     "multer": "^2.1.1",

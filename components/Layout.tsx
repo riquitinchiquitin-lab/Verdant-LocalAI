@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useSystem } from '../context/SystemContext';
 import { usePlants } from '../context/PlantContext';
+import { useInventory } from '../context/InventoryContext';
 import { Logo } from './ui/Logo';
 import { LanguageSelector } from './ui/LanguageSelector';
 import { AddPlantModal } from './AddPlantModal';
 import { QrScannerModal } from './QrScannerModal';
 import { PlantDetailsModal } from './PlantDetailsModal';
-import { Plant } from '../types';
+import { InventoryItemDetails } from './InventoryItemDetails';
+import { Modal } from './ui/Modal';
+import { Plant, InventoryItem } from '../types';
 import { generatePlantDetails } from '../services/plantAi';
 import { generateUUID } from '../services/crypto';
 import { Button } from './ui/Button';
@@ -145,17 +148,138 @@ const QuotaBar: React.FC = () => {
 
 import { ThemeToggle } from './ThemeToggle';
 
+// Highly robust utility to match a plant by its QR hash or its ID
+const findPlantByQrOrId = (data: string, plantsList: Plant[]): Plant | undefined => {
+  if (!data) return undefined;
+  const cleanedData = data.trim().toLowerCase();
+
+  // Try 0: Regex match for standard plant UUID pattern (starting with p- followed by UUID or alphanumeric parts)
+  const plantIdMatch = cleanedData.match(/p-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i) || cleanedData.match(/p-[a-z0-9-]+/i);
+  if (plantIdMatch) {
+    const extractedId = plantIdMatch[0].toLowerCase().trim();
+    const foundByRegex = plantsList.find(p => p.id.toLowerCase().trim() === extractedId);
+    if (foundByRegex) return foundByRegex;
+  }
+  
+  // Try 1: Exact ID match (case insensitive, trimmed)
+  let found = plantsList.find(p => p.id.toLowerCase().trim() === cleanedData);
+  if (found) return found;
+
+  // Try 2: Split by pipes (QR format: houseId|plantId|species|family) and match the plantId
+  const parts = cleanedData.split('|').map(p => p.trim());
+  if (parts.length >= 2) {
+    const possiblePlantId = parts[1];
+    found = plantsList.find(p => p.id.toLowerCase().trim() === possiblePlantId);
+    if (found) return found;
+
+    // What if the first part is the plantId? Check all parts!
+    for (const part of parts) {
+      if (part && part.startsWith('p-')) {
+        found = plantsList.find(p => p.id.toLowerCase().trim() === part);
+        if (found) return found;
+      }
+    }
+  }
+
+  // Try 3: Check if any part exactly matches the plant's lowercase id or includes it
+  found = plantsList.find(p => {
+    const pid = p.id.toLowerCase().trim();
+    return parts.some(part => part === pid) || cleanedData.includes(`|${pid}`) || cleanedData.includes(`${pid}|`);
+  });
+  if (found) return found;
+
+  // Try 4: Check if any plant's reconstructed QR code matches cleanedData
+  found = plantsList.find(p => {
+    const houseId = (p.houseId || 'GLOBAL').replace(/\|/g, '').trim().toLowerCase();
+    const plantId = p.id.replace(/\|/g, '').trim().toLowerCase();
+    const species = (p.species || 'SPECIES').replace(/\|/g, '').trim().toLowerCase();
+    const family = (p.family || 'BOTANICAL').replace(/\|/g, '').trim().toLowerCase();
+    
+    const plainFormat = `${houseId}|${plantId}|${species}|${family}`;
+    const spacedFormat = `${houseId} | ${plantId} | ${species} | ${family}`;
+    
+    return cleanedData === plainFormat || 
+           cleanedData === spacedFormat ||
+           cleanedData.includes(plantId) ||
+           plainFormat.includes(cleanedData);
+  });
+  
+  return found;
+};
+
+// Highly robust utility to match an inventory item by its ID, associated plant ID or name
+const findInventoryItemByQrOrId = (data: string, inventoryList: InventoryItem[], plantsList: Plant[]): InventoryItem | undefined => {
+  if (!data) return undefined;
+  const cleanedData = data.trim().toLowerCase();
+
+  // Try 0: Regex match for standard inventory item UUID pattern (starting with inv- followed by UUID or alphanumeric parts)
+  const invIdMatch = cleanedData.match(/inv-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i) || cleanedData.match(/inv-[a-z0-9-]+/i);
+  if (invIdMatch) {
+    const extractedId = invIdMatch[0].toLowerCase().trim();
+    const foundByRegex = inventoryList.find(i => i.id.toLowerCase().trim() === extractedId);
+    if (foundByRegex) return foundByRegex;
+  }
+  
+  // Try 1: Exact ID match on inventory item
+  let found = inventoryList.find(i => i.id.toLowerCase().trim() === cleanedData);
+  if (found) return found;
+
+  // Try 2: Segment match on inventory item ID
+  const parts = cleanedData.split('|').map(p => p.trim());
+  for (const part of parts) {
+    if (part) {
+      found = inventoryList.find(i => i.id.toLowerCase().trim() === part);
+      if (found) return found;
+
+      // Try 3: Check if inventory item is associated with a plant whose ID matches this part
+      found = inventoryList.find(i => i.associatedPlantId && i.associatedPlantId.toLowerCase().trim() === part);
+      if (found) return found;
+    }
+  }
+
+  // Try 4: Check if any part matches associatedPlantId by checking if a plant exists under that ID or QR
+  const matchedPlant = findPlantByQrOrId(data, plantsList);
+  if (matchedPlant) {
+    found = inventoryList.find(i => i.associatedPlantId && i.associatedPlantId.toLowerCase().trim() === matchedPlant.id.toLowerCase().trim());
+    if (found) return found;
+  }
+
+  // Try 5: Check if there's any inventory item whose name matches cleanedData or any of the segments
+  found = inventoryList.find(i => {
+    const itemNameEn = (i.name?.en || '').toLowerCase();
+    const itemNamePrimary = (Object.values(i.name || {})[0] || '').toLowerCase();
+    return itemNameEn.includes(cleanedData) || itemNamePrimary.includes(cleanedData);
+  });
+  if (found) return found;
+
+  return undefined;
+};
+
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { logout, user, can } = useAuth();
-  const { alertMessage, setAlertMessage, searchFilter, setSearchFilter, addPlant, getEffectiveApiKey, plants } = usePlants();
+  const { 
+    alertMessage, 
+    setAlertMessage, 
+    searchFilter, 
+    setSearchFilter, 
+    addPlant, 
+    getEffectiveApiKey, 
+    plants,
+    selectedPlant,
+    setSelectedPlant,
+    selectedInventoryItem,
+    setSelectedInventoryItem,
+    isScannerOpen,
+    setIsScannerOpen
+  } = usePlants();
+  const { inventory } = useInventory();
   const { t, lv } = useLanguage();
   const { showNotification, isLocalAiEnabled } = useSystem();
   const location = useLocation();
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showInstallBtn, setShowInstallBtn] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [selectedPlant, setSelectedPlant] = useState<Plant | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
@@ -163,22 +287,35 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   }, []);
 
   const handleScanSuccess = async (data: string) => {
+    console.log("QR Code scanned successfully. Raw data:", data);
     setIsScannerOpen(false);
     const trimmedData = data.trim();
 
-    // 1. Match by whole ID or any of the parts from split QR data
-    const trimmedParts = trimmedData.split('|').map(p => p.trim());
-    const matchedPlant = plants.find(p => 
-      p.id.toLowerCase() === trimmedData.toLowerCase() || 
-      trimmedParts.some(part => p.id.toLowerCase() === part.toLowerCase())
-    );
-
-    if (matchedPlant) {
-      setSelectedPlant(matchedPlant);
-      showNotification("PLANT FOUND IN REPOSITORY", "SUCCESS");
+    // 1. Check if scan relates to an inventory item
+    const matchedItem = findInventoryItemByQrOrId(trimmedData, inventory, plants);
+    console.log("QR Scanner inventory lookup matched item:", matchedItem?.id || "None found");
+    if (matchedItem) {
+      navigate('/inventory');
+      setTimeout(() => {
+        setSelectedInventoryItem(matchedItem);
+        showNotification("INVENTORY ITEM FOUND IN REPOSITORY", "SUCCESS");
+      }, 50);
       return;
     }
 
+    // 2. Check if scan relates to an plant
+    const matchedPlant = findPlantByQrOrId(trimmedData, plants);
+    console.log("QR Scanner plant lookup matched plant:", matchedPlant?.id || "None found");
+    if (matchedPlant) {
+      navigate('/');
+      setTimeout(() => {
+        setSelectedPlant(matchedPlant);
+        showNotification("PLANT FOUND IN REPOSITORY", "SUCCESS");
+      }, 50);
+      return;
+    }
+
+    const trimmedParts = trimmedData.split('|').map(p => p.trim());
     if (trimmedParts.length >= 3) {
       const sourceHouse = trimmedParts[0];
       const sourceId = trimmedParts[1];
@@ -202,35 +339,47 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           logs: []
         };
         await addPlant(syncedPlant as any);
-        setSelectedPlant(syncedPlant as any);
-        showNotification("SYNC SUCCESS", "SUCCESS");
+        navigate('/');
+        setTimeout(() => {
+          setSelectedPlant(syncedPlant as any);
+          showNotification("SYNC SUCCESS", "SUCCESS");
+        }, 100);
       } catch (err) {
+        console.error("Failed to sync scanned plant:", err);
         showNotification("SYNC FAILED", "ERROR");
       } finally {
         setIsSyncing(false);
       }
     } else {
-      showNotification("INVALID SYNC ID", "WARNING");
+      console.warn("Invalid QR spec format scanned:", trimmedData);
+      showNotification("INVALID ITEM / SYNC ID", "WARNING");
     }
   };
 
-  // Auto-open plant details if QR format or plant ID is entered in searchFilter
+  // Auto-open plant details or inventory item if QR format or plant ID is entered in searchFilter
   useEffect(() => {
     const f = searchFilter.trim();
     if (!f) return;
 
-    const trimmedParts = f.split('|').map(p => p.trim());
-    const matchedPlant = plants.find(p => 
-      p.id.toLowerCase() === f.toLowerCase() || 
-      trimmedParts.some(part => p.id.toLowerCase() === part.toLowerCase())
-    );
+    // Check inventory first
+    const matchedItem = findInventoryItemByQrOrId(f, inventory, plants);
+    if (matchedItem) {
+      navigate('/inventory');
+      setSelectedInventoryItem(matchedItem);
+      setSearchFilter('');
+      showNotification("INVENTORY ITEM FOUND VIA SEARCH", "SUCCESS");
+      return;
+    }
 
+    // Check plants second
+    const matchedPlant = findPlantByQrOrId(f, plants);
     if (matchedPlant) {
+      navigate('/');
       setSelectedPlant(matchedPlant);
       setSearchFilter('');
       showNotification("PLANT FOUND VIA QR SEARCH", "SUCCESS");
     }
-  }, [searchFilter, plants, setSearchFilter, showNotification]);
+  }, [searchFilter, plants, inventory, setSearchFilter, showNotification, setSelectedPlant, setSelectedInventoryItem, navigate]);
 
   useEffect(() => {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
@@ -285,6 +434,24 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           {alertMessage}
         </div>
       )}
+
+      {/* Root Portal & Modal Layer (outside of transformed / shifted elements) */}
+      <AddPlantModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onSave={addPlant} />
+      <QrScannerModal isOpen={isScannerOpen} onClose={() => setIsScannerOpen(false)} onScanSuccess={handleScanSuccess} />
+      <PlantDetailsModal isOpen={!!selectedPlant} plant={selectedPlant} onClose={() => setSelectedPlant(null)} />
+      {selectedInventoryItem && (
+        <Modal 
+          isOpen={!!selectedInventoryItem} 
+          onClose={() => setSelectedInventoryItem(null)} 
+          title={lv(selectedInventoryItem.name) || 'Item Details'}
+          size="2xl"
+        >
+          <div className="py-2">
+            <InventoryItemDetails item={selectedInventoryItem} onClose={() => setSelectedInventoryItem(null)} />
+          </div>
+        </Modal>
+      )}
+
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
@@ -293,10 +460,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       )}
 
       <aside className={`fixed lg:static inset-y-0 left-0 w-72 bg-white dark:bg-slate-950 border-r border-gray-100 dark:border-slate-800 z-50 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform duration-300 flex flex-col no-print pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]`}>
-        <AddPlantModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onSave={addPlant} />
-        <QrScannerModal isOpen={isScannerOpen} onClose={() => setIsScannerOpen(false)} onScanSuccess={handleScanSuccess} />
-        <PlantDetailsModal isOpen={!!selectedPlant} plant={selectedPlant} onClose={() => setSelectedPlant(null)} />
-
         <div className="p-8 pb-4">
           <Link to="/" className="flex items-center gap-4 group" onClick={() => setIsSidebarOpen(false)}>
             <div className="w-10 h-10 group-hover:scale-110 transition-transform duration-500">
