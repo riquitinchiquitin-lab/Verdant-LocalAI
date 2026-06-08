@@ -151,7 +151,24 @@ import { ThemeToggle } from './ThemeToggle';
 // Highly robust utility to match a plant by its QR hash or its ID
 const findPlantByQrOrId = (data: string, plantsList: Plant[]): Plant | undefined => {
   if (!data) return undefined;
-  const cleanedData = data.trim().toLowerCase();
+  const rawData = data.trim();
+  let cleanedData = rawData.toLowerCase();
+
+  // Handle URL formatting: extract any alphanumeric/hash parts or ID patterns if the input is a full URL
+  if (cleanedData.includes('http://') || cleanedData.includes('https://')) {
+    try {
+      const urlObj = new URL(rawData);
+      // Look inside pathname, hash, query params
+      const searchTarget = (urlObj.pathname + urlObj.hash + urlObj.search).toLowerCase();
+      const match = searchTarget.match(/p-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i) || 
+                    searchTarget.match(/p-[a-z0-9-]+/i);
+      if (match) {
+        cleanedData = match[0].toLowerCase();
+      }
+    } catch (e) {
+      console.warn("QR URL detection error in findPlantByQrOrId:", e);
+    }
+  }
 
   // Try 0: Regex match for standard plant UUID pattern (starting with p- followed by UUID or alphanumeric parts)
   const plantIdMatch = cleanedData.match(/p-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i) || cleanedData.match(/p-[a-z0-9-]+/i);
@@ -172,11 +189,15 @@ const findPlantByQrOrId = (data: string, plantsList: Plant[]): Plant | undefined
     found = plantsList.find(p => p.id.toLowerCase().trim() === possiblePlantId);
     if (found) return found;
 
-    // What if the first part is the plantId? Check all parts!
+    // Check all segments of the pipe split for ANY exact match or startsWith / includes of plant ID
     for (const part of parts) {
-      if (part && part.startsWith('p-')) {
-        found = plantsList.find(p => p.id.toLowerCase().trim() === part);
-        if (found) return found;
+      if (part) {
+        const matchingPlant = plantsList.find(p => {
+          const pid = p.id.toLowerCase().trim();
+          const partClean = part.toLowerCase().trim();
+          return pid === partClean || partClean.includes(pid) || pid.includes(partClean);
+        });
+        if (matchingPlant) return matchingPlant;
       }
     }
   }
@@ -203,14 +224,56 @@ const findPlantByQrOrId = (data: string, plantsList: Plant[]): Plant | undefined
            cleanedData.includes(plantId) ||
            plainFormat.includes(cleanedData);
   });
-  
+  if (found) return found;
+
+  // Try 5: Check by general identifiers (Nickname/Name in either language, Species, or Genus)
+  found = plantsList.find(p => {
+    const species = (p.species || '').toLowerCase().trim();
+    const genus = (p.genus || '').toLowerCase().trim();
+    const family = (p.family || '').toLowerCase().trim();
+    
+    // Check all keys in nickname object or string nickname
+    const nicknames: string[] = [];
+    const rawNickname = p.nickname as any;
+    if (typeof rawNickname === 'string') {
+      nicknames.push(rawNickname.toLowerCase().trim());
+    } else if (rawNickname && typeof rawNickname === 'object') {
+      Object.values(rawNickname).forEach((val: any) => {
+        if (typeof val === 'string') nicknames.push(val.toLowerCase().trim());
+      });
+    }
+
+    const matchesName = nicknames.some(n => cleanedData === n || cleanedData.includes(n) || n.includes(cleanedData));
+    const matchesSpecies = species && (cleanedData === species || cleanedData.includes(species) || species.includes(cleanedData));
+    const matchesGenus = genus && (cleanedData === genus || cleanedData.includes(genus) || genus.includes(cleanedData));
+    const matchesFamily = family && (cleanedData === family || cleanedData.includes(family) || family.includes(cleanedData));
+
+    return matchesName || matchesSpecies || matchesGenus || matchesFamily;
+  });
+
   return found;
 };
 
 // Highly robust utility to match an inventory item by its ID, associated plant ID or name
 const findInventoryItemByQrOrId = (data: string, inventoryList: InventoryItem[], plantsList: Plant[]): InventoryItem | undefined => {
   if (!data) return undefined;
-  const cleanedData = data.trim().toLowerCase();
+  const rawData = data.trim();
+  let cleanedData = rawData.toLowerCase();
+
+  // Handle URL formatting: extract ID patterns if input is a full URL
+  if (cleanedData.includes('http://') || cleanedData.includes('https://')) {
+    try {
+      const urlObj = new URL(rawData);
+      const searchTarget = (urlObj.pathname + urlObj.hash + urlObj.search).toLowerCase();
+      const match = searchTarget.match(/inv-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i) || 
+                    searchTarget.match(/inv-[a-z0-9-]+/i);
+      if (match) {
+        cleanedData = match[0].toLowerCase();
+      }
+    } catch (e) {
+      console.warn("QR URL detection error in findInventoryItemByQrOrId:", e);
+    }
+  }
 
   // Try 0: Regex match for standard inventory item UUID pattern (starting with inv- followed by UUID or alphanumeric parts)
   const invIdMatch = cleanedData.match(/inv-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i) || cleanedData.match(/inv-[a-z0-9-]+/i);
@@ -228,7 +291,11 @@ const findInventoryItemByQrOrId = (data: string, inventoryList: InventoryItem[],
   const parts = cleanedData.split('|').map(p => p.trim());
   for (const part of parts) {
     if (part) {
-      found = inventoryList.find(i => i.id.toLowerCase().trim() === part);
+      found = inventoryList.find(i => {
+        const itemID = i.id.toLowerCase().trim();
+        const partClean = part.toLowerCase().trim();
+        return itemID === partClean || itemID.includes(partClean) || partClean.includes(itemID);
+      });
       if (found) return found;
 
       // Try 3: Check if inventory item is associated with a plant whose ID matches this part
@@ -246,9 +313,17 @@ const findInventoryItemByQrOrId = (data: string, inventoryList: InventoryItem[],
 
   // Try 5: Check if there's any inventory item whose name matches cleanedData or any of the segments
   found = inventoryList.find(i => {
-    const itemNameEn = (i.name?.en || '').toLowerCase();
-    const itemNamePrimary = (Object.values(i.name || {})[0] || '').toLowerCase();
-    return itemNameEn.includes(cleanedData) || itemNamePrimary.includes(cleanedData);
+    const names: string[] = [];
+    const rawName = i.name as any;
+    if (rawName && typeof rawName === 'object') {
+      Object.values(rawName).forEach((val: any) => {
+        if (typeof val === 'string') names.push(val.toLowerCase().trim());
+      });
+    } else if (typeof rawName === 'string') {
+      names.push(rawName.toLowerCase().trim());
+    }
+    
+    return names.some(n => cleanedData === n || cleanedData.includes(n) || n.includes(cleanedData));
   });
   if (found) return found;
 
@@ -295,23 +370,19 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     const matchedItem = findInventoryItemByQrOrId(trimmedData, inventory, plants);
     console.log("QR Scanner inventory lookup matched item:", matchedItem?.id || "None found");
     if (matchedItem) {
+      setSelectedInventoryItem(matchedItem);
       navigate('/inventory');
-      setTimeout(() => {
-        setSelectedInventoryItem(matchedItem);
-        showNotification("INVENTORY ITEM FOUND IN REPOSITORY", "SUCCESS");
-      }, 50);
+      showNotification("INVENTORY ITEM FOUND IN REPOSITORY", "SUCCESS");
       return;
     }
 
-    // 2. Check if scan relates to an plant
+    // 2. Check if scan relates to a plant
     const matchedPlant = findPlantByQrOrId(trimmedData, plants);
     console.log("QR Scanner plant lookup matched plant:", matchedPlant?.id || "None found");
     if (matchedPlant) {
+      setSelectedPlant(matchedPlant);
       navigate('/');
-      setTimeout(() => {
-        setSelectedPlant(matchedPlant);
-        showNotification("PLANT FOUND IN REPOSITORY", "SUCCESS");
-      }, 50);
+      showNotification("PLANT FOUND IN REPOSITORY", "SUCCESS");
       return;
     }
 
@@ -339,11 +410,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           logs: []
         };
         await addPlant(syncedPlant as any);
+        setSelectedPlant(syncedPlant as any);
         navigate('/');
-        setTimeout(() => {
-          setSelectedPlant(syncedPlant as any);
-          showNotification("SYNC SUCCESS", "SUCCESS");
-        }, 100);
+        showNotification("SYNC SUCCESS", "SUCCESS");
       } catch (err) {
         console.error("Failed to sync scanned plant:", err);
         showNotification("SYNC FAILED", "ERROR");
@@ -351,8 +420,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         setIsSyncing(false);
       }
     } else {
-      console.warn("Invalid QR spec format scanned:", trimmedData);
-      showNotification("INVALID ITEM / SYNC ID", "WARNING");
+      console.warn("No direct repository match for:", trimmedData);
+      setSearchFilter(trimmedData);
+      navigate('/');
+      showNotification(`SEEKING "${trimmedData}" | Click '+ Add Plant' if new!`, "INFO");
     }
   };
 
@@ -364,8 +435,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     // Check inventory first
     const matchedItem = findInventoryItemByQrOrId(f, inventory, plants);
     if (matchedItem) {
-      navigate('/inventory');
       setSelectedInventoryItem(matchedItem);
+      navigate('/inventory');
       setSearchFilter('');
       showNotification("INVENTORY ITEM FOUND VIA SEARCH", "SUCCESS");
       return;
@@ -374,8 +445,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     // Check plants second
     const matchedPlant = findPlantByQrOrId(f, plants);
     if (matchedPlant) {
-      navigate('/');
       setSelectedPlant(matchedPlant);
+      navigate('/');
       setSearchFilter('');
       showNotification("PLANT FOUND VIA QR SEARCH", "SUCCESS");
     }
