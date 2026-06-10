@@ -570,10 +570,12 @@ export const PlantDetailsModal: React.FC<PlantDetailsModalProps> = ({ isOpen, on
                       {[
                         { type: 'FERTILIZED', icon: '🧪', label: t('btn_feed') },
                         { type: 'PRUNED', icon: '✂️', label: t('btn_prune_caps') },
-                        { type: 'REPOTTED', icon: '🪴', label: t('btn_repot_caps') },
-                        { type: 'NEW_LEAF', icon: '🌱', label: t('btn_growth') },
+                        ...(!plant.isTree ? [
+                          { type: 'REPOTTED', icon: '🪴', label: t('btn_repot_caps') },
+                          { type: 'NEW_LEAF', icon: '🌱', label: t('btn_growth') }
+                        ] : []),
                         ...(plant.flowers ? [{ type: 'FLOWER', icon: '🌸', label: t('btn_bloom') }] : []),
-                        { type: 'ROTATED', icon: <PotRotationIcon className="w-8 h-8 group-hover:animate-[spin_3s_linear_infinite]" />, label: t('btn_rotate_caps') },
+                        ...(!plant.isTree ? [{ type: 'ROTATED', icon: <PotRotationIcon className="w-8 h-8 group-hover:animate-[spin_3s_linear_infinite]" />, label: t('btn_rotate_caps') }] : []),
                         { type: 'TRANSFER', icon: <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>, label: t('btn_transfer') }
                       ].map(action => (
                         <motion.button 
@@ -747,27 +749,31 @@ export const PlantDetailsModal: React.FC<PlantDetailsModalProps> = ({ isOpen, on
                                 <section className="bg-white dark:bg-slate-900 rounded-[40px] p-10 border border-gray-100 dark:border-slate-800 shadow-sm space-y-8">
                                     <h3 className="text-[11px] font-serif font-black uppercase tracking-[0.3em] text-verdant">{t('lbl_biological_milestones')}</h3>
                                     <div className="grid grid-cols-1 gap-8">
-                                        <PassportItem 
-                                            icon="🔄" 
-                                            label={t('lbl_repot_cadence')} 
-                                            value={plant.repottingFrequency ? `${t('lbl_every')} ${plant.repottingFrequency} ${t('lbl_months')}` : `${t('lbl_every')} ${getSuggestedRepotFrequency(plant)} ${t('lbl_months')}`} 
-                                            subValue={!plant.repottingFrequency ? '(Suggested based on species)' : undefined}
-                                        />
-                                        <PassportItem 
-                                            icon="🪴" 
-                                            label={t('lbl_last_pot_size')} 
-                                            value={plant.lastPotSizeCm || plant.lastPotSizeInches ? `${plant.lastPotSizeCm || '--'} cm / ${plant.lastPotSizeInches || '--'} in` : (plant.lastPotSize ? (String(plant.lastPotSize).match(/^\d+(\.\d+)?$/) ? `${plant.lastPotSize} cm` : String(plant.lastPotSize)) : t('lbl_na'))}
-                                        />
-                                        <PassportItem 
-                                            icon="🔄" 
-                                            label={t('lbl_rotation_frequency')} 
-                                            value={plant.rotationFrequency ? `${plant.rotationFrequency} ${t('days')}` : t('lbl_na')} 
-                                        />
-                                        <PassportItem 
-                                            icon="📅" 
-                                            label={t('lbl_last_rotated')} 
-                                            value={plant.lastRotated ? new Date(plant.lastRotated).toLocaleDateString() : t('lbl_na')}
-                                        />
+                                        {!plant.isTree && (
+                                            <>
+                                                <PassportItem 
+                                                    icon="🔄" 
+                                                    label={t('lbl_repot_cadence')} 
+                                                    value={plant.repottingFrequency ? `${t('lbl_every')} ${plant.repottingFrequency} ${t('lbl_months')}` : `${t('lbl_every')} ${getSuggestedRepotFrequency(plant)} ${t('lbl_months')}`} 
+                                                    subValue={!plant.repottingFrequency ? '(Suggested based on species)' : undefined}
+                                                />
+                                                <PassportItem 
+                                                    icon="🪴" 
+                                                    label={t('lbl_last_pot_size')} 
+                                                    value={plant.lastPotSizeCm || plant.lastPotSizeInches ? `${plant.lastPotSizeCm || '--'} cm / ${plant.lastPotSizeInches || '--'} in` : (plant.lastPotSize ? (String(plant.lastPotSize).match(/^\d+(\.\d+)?$/) ? `${plant.lastPotSize} cm` : String(plant.lastPotSize)) : t('lbl_na'))}
+                                                />
+                                                <PassportItem 
+                                                    icon="🔄" 
+                                                    label={t('lbl_rotation_frequency')} 
+                                                    value={plant.rotationFrequency ? `${plant.rotationFrequency} ${t('days')}` : t('lbl_na')} 
+                                                />
+                                                <PassportItem 
+                                                    icon="📅" 
+                                                    label={t('lbl_last_rotated')} 
+                                                    value={plant.lastRotated ? new Date(plant.lastRotated).toLocaleDateString() : t('lbl_na')}
+                                                />
+                                            </>
+                                        )}
                                         <PassportItem 
                                             icon="💧" 
                                             label={t('lbl_last_watered_date')} 

@@ -181,6 +181,7 @@ export interface Plant {
   healthStatus?: string | null;
   variety?: string | null;
   isPriority?: boolean;
+  isTree?: boolean;
 }
 
 export type RecurrenceType = 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY';

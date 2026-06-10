@@ -18,7 +18,11 @@ import { exportPlantsToNiimbotExcel } from '../services/exportService';
 import { generatePlantDetails } from '../services/plantAi';
 import { generateUUID } from '../services/crypto';
 
-export const Dashboard: React.FC = () => {
+interface DashboardProps {
+  isTreesView?: boolean;
+}
+
+export const Dashboard: React.FC<DashboardProps> = ({ isTreesView = false }) => {
   const { user, can } = useAuth();
   const { showNotification, isLocalAiEnabled } = useSystem();
   const navigate = useNavigate();
@@ -47,6 +51,13 @@ export const Dashboard: React.FC = () => {
 
   const filtered = useMemo(() => {
     return plants.filter(p => {
+      // 0. Filter by Trees or Regular Plants
+      if (isTreesView) {
+        if (!p.isTree) return false;
+      } else {
+        if (p.isTree) return false;
+      }
+
       // 1. Admin House Filter (if active)
       if (isAdmin && selectedHouseFilter !== 'ALL') {
         if (selectedHouseFilter === 'UNATTRIBUTED') return !p.houseId;
@@ -156,7 +167,7 @@ export const Dashboard: React.FC = () => {
                     </div>
                     <div className="space-y-0">
                       <h1 className="text-6xl md:text-8xl font-black text-gray-900 dark:text-white tracking-tighter uppercase leading-[0.8]">
-                          {t('app_name')} <span className="text-verdant opacity-50">/</span>
+                          {isTreesView ? (t('menu_my_trees') || 'My Trees') : t('app_name')} <span className="text-verdant opacity-50">/</span>
                       </h1>
                     </div>
                 </div>
@@ -223,8 +234,12 @@ export const Dashboard: React.FC = () => {
         
         {filtered.length === 0 && (
             <div className="py-24 text-center border-4 border-dashed border-gray-100 dark:border-slate-800 rounded-[48px]">
-                <p className="text-gray-400 font-black uppercase tracking-[0.4em]">{t('empty_jungle')}</p>
-                <Button variant="primary" className="mt-8 rounded-2xl" onClick={restoreDemoData}>{t('restore_examples')}</Button>
+                <p className="text-gray-400 font-black uppercase tracking-[0.4em]">
+                  {isTreesView ? "No Specimen Trees Tracked" : t('empty_jungle')}
+                </p>
+                {!isTreesView && (
+                  <Button variant="primary" className="mt-8 rounded-2xl" onClick={restoreDemoData}>{t('restore_examples')}</Button>
+                )}
             </div>
         )}
     </div>

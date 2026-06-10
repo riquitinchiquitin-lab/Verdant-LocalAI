@@ -485,6 +485,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const navItems = [
     { to: '/', label: t('menu_my_plants'), icon: '🌱' },
+    { to: '/trees', label: t('menu_my_trees'), icon: '🌲' },
     { to: '/care', label: t('menu_care'), icon: '💧' },
     { to: '/tasks', label: t('menu_tasks'), icon: '📋' },
     { to: '/inventory', label: t('menu_inventory'), icon: '📦' },
@@ -664,7 +665,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   <Button className="shadow-xl shadow-verdant/20 h-10 md:h-12 px-3 md:px-6 rounded-xl md:rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-2 text-[10px] md:text-xs" onClick={() => setIsAddModalOpen(true)}>
                       <span className="text-lg md:text-xl">+</span>
                       <span className="hidden md:inline">{t('btn_add_plant')}</span>
-                      <span className="md:hidden text-xl">🪴</span>
+                      <span className="md:hidden text-xl">🌿</span>
                   </Button>
               )}
               <div className="hidden md:block w-8 h-8">

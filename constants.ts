@@ -120,3 +120,12 @@ export const ROOM_TYPES = [
   "Lobby",
   "Porch"
 ];
+
+export const YARD_TYPES = [
+  "Front Yard",
+  "Back Yard",
+  "Side Yard",
+  "Garden Bed",
+  "Patio/Deck",
+  "Greenhouse/Orchard"
+];

@@ -9,7 +9,7 @@ import { useSystem } from '../context/SystemContext';
 import { translateInput, translateArrayInput, translateObjectInput } from '../services/translationService';
 import { generatePlantDetails } from '../services/plantAi';
 import { CameraCapture } from './ui/CameraCapture';
-import { ROOM_TYPES, CURRENCIES, getCurrencyForLanguage } from '../constants';
+import { ROOM_TYPES, YARD_TYPES, CURRENCIES, getCurrencyForLanguage } from '../constants';
 
 interface EditPlantModalProps {
   isOpen: boolean;
@@ -26,6 +26,7 @@ export const EditPlantModal: React.FC<EditPlantModalProps> = ({ isOpen, onClose,
   const { isLocalAiEnabled } = useSystem();
   
   const [nickname, setNickname] = useState('');
+  const [isTree, setIsTree] = useState(false);
   const [room, setRoom] = useState('');
   const [houseId, setHouseId] = useState<string | null>(null);
   const [wateringInterval, setWateringInterval] = useState<number | null>(null);
@@ -68,6 +69,7 @@ export const EditPlantModal: React.FC<EditPlantModalProps> = ({ isOpen, onClose,
         const currentNickname = lv(plant.nickname);
         const currentRoom = lv(plant.room as any);
         setNickname(currentNickname);
+        setIsTree(!!plant.isTree);
         setRoom(currentRoom);
         setCategory(lv(plant.category as any));
         setGrowthRate(lv(plant.growthRate as any));
@@ -92,7 +94,7 @@ export const EditPlantModal: React.FC<EditPlantModalProps> = ({ isOpen, onClose,
         setCost(plant.provenance?.cost || null);
         setCurrency(plant.provenance?.currency || getCurrencyForLanguage(language));
         setImages(plant.images || []);
-        const isPredefined = ROOM_TYPES.includes(currentRoom);
+        const isPredefined = !!plant.isTree ? YARD_TYPES.includes(currentRoom) : ROOM_TYPES.includes(currentRoom);
         setIsCustom(!!currentRoom && !isPredefined);
     }
   }, [isOpen, plant, lv, lva]);
@@ -174,6 +176,7 @@ export const EditPlantModal: React.FC<EditPlantModalProps> = ({ isOpen, onClose,
               category: batchResults.category || plant.category,
               growthRate: batchResults.growthRate || plant.growthRate,
               houseId: houseId,
+              isTree: isTree,
               wateringInterval: wateringInterval,
               lastWatered: lastWatered,
               targetPh,
@@ -277,6 +280,23 @@ export const EditPlantModal: React.FC<EditPlantModalProps> = ({ isOpen, onClose,
               />
           </div>
 
+          <div className="flex items-center gap-3 h-14 px-4 border border-gray-200 dark:border-slate-700 rounded-2xl bg-white dark:bg-slate-800 transition-all">
+              <input 
+                  type="checkbox" 
+                  id="isTreeEdit"
+                  checked={isTree}
+                  onChange={e => {
+                      setIsTree(e.target.checked);
+                      setRoom('');
+                      setIsCustom(false);
+                  }}
+                  className="w-5 h-5 rounded border-gray-300 dark:border-slate-600 text-verdant focus:ring-verdant transition-colors cursor-pointer accent-verdant"
+              />
+              <label htmlFor="isTreeEdit" className="text-[10px] font-black uppercase tracking-widest text-[#2e5d4e] dark:text-emerald-400 cursor-pointer select-none font-bold">
+                  {t('lbl_is_tree') || 'Specimen Tree'}
+              </label>
+          </div>
+
           <div>
               <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 px-1">{t('lbl_growth_rate')}</label>
               <input 
@@ -295,10 +315,25 @@ export const EditPlantModal: React.FC<EditPlantModalProps> = ({ isOpen, onClose,
                   value={isCustom ? 'CUSTOM_OPTION' : room}
                   onChange={handleSelectChange}
               >
-                  <option value="">{t('assign_room_label')}</option>
-                  {ROOM_TYPES.map(r => (
-                      <option key={r} value={r}>{r}</option>
-                  ))}
+                  {isTree ? (
+                      <>
+                          <option value="">{t('assign_yard_label') || '-- Assign Yard Location --'}</option>
+                          {YARD_TYPES.map(y => {
+                              const slug = y.toLowerCase().replace(/[\/\s-]/g, '_');
+                              const key = `room_${slug}`;
+                              return <option key={y} value={y}>{t(key) || y}</option>;
+                          })}
+                      </>
+                  ) : (
+                      <>
+                          <option value="">{t('assign_room_label')}</option>
+                          {ROOM_TYPES.map(r => {
+                              const slug = r.toLowerCase().replace(/[\/\s-]/g, '_');
+                              const key = `room_${slug}`;
+                              return <option key={r} value={r}>{t(key) || r}</option>;
+                          })}
+                      </>
+                  )}
                   <option value="CUSTOM_OPTION">{t('other_room')}</option>
               </select>
               

@@ -897,7 +897,12 @@ export const AdminView: React.FC = () => {
                                     )}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <h3 className="text-lg font-black text-slate-900 dark:text-white truncate uppercase tracking-tight leading-none mb-1">{lv(plant.nickname)}</h3>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <h3 className="text-lg font-black text-slate-900 dark:text-white truncate uppercase tracking-tight leading-none">{lv(plant.nickname)}</h3>
+                                        <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full shrink-0 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                                            {plant.isTree ? '🌲' : '🌱'}
+                                        </span>
+                                    </div>
                                     <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate font-sans font-normal normal-case leading-none mb-2">{plant.species}</p>
                                     <div className="flex items-center justify-between">
                                         <span className={`text-[9px] font-black uppercase tracking-widest ${house ? 'text-verdant' : 'text-amber-500'}`}>

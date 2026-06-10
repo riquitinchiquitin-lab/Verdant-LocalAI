@@ -85,6 +85,13 @@ const App: React.FC = () => {
                             </Layout>
                           </ProtectedRoute>
                         } />
+                        <Route path="/trees" element={
+                          <ProtectedRoute>
+                            <Layout>
+                              <Dashboard isTreesView={true} />
+                            </Layout>
+                          </ProtectedRoute>
+                        } />
                         <Route path="/care" element={
                           <ProtectedRoute>
                             <Layout>

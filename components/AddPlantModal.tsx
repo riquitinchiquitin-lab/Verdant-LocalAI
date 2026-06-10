@@ -14,7 +14,7 @@ import { Logo } from './ui/Logo';
 import { compressImage, dataURLtoBlob } from '../services/imageUtils';
 import { CameraCapture } from './ui/CameraCapture';
 import { getCompatibleItems } from '../services/compatibilityService';
-import { ROOM_TYPES, CURRENCIES, getCurrencyForLanguage } from '../constants';
+import { ROOM_TYPES, YARD_TYPES, CURRENCIES, getCurrencyForLanguage } from '../constants';
 import { generateUUID } from '../services/crypto';
 
 interface AddPlantModalProps {
@@ -51,6 +51,7 @@ export const AddPlantModal: React.FC<AddPlantModalProps> = ({ isOpen, onClose, o
   const [editLastPotSize, setEditLastPotSize] = useState('');
   const [editLastPotSizeInches, setEditLastPotSizeInches] = useState<number | null>(null);
   const [editLastPotSizeCm, setEditLastPotSizeCm] = useState<number | null>(null);
+  const [editIsTree, setEditIsTree] = useState(false);
   const [selectedHouseId, setSelectedHouseId] = useState<string | null>(user?.houseId || null);
   const [nursery, setNursery] = useState('');
   const [dateOfPurchase, setDateOfPurchase] = useState(new Date().toISOString().split('T')[0]);
@@ -118,6 +119,7 @@ export const AddPlantModal: React.FC<AddPlantModalProps> = ({ isOpen, onClose, o
     setIdentifiedPlant(null);
     setEditNickname('');
     setEditRoom('');
+    setEditIsTree(false);
     setNursery('');
     setDateOfPurchase(new Date().toISOString().split('T')[0]);
     setEditLastWateredDate(null);
@@ -173,6 +175,11 @@ export const AddPlantModal: React.FC<AddPlantModalProps> = ({ isOpen, onClose, o
       
       setEditNickname(lv(details.nickname));
       setEditRoom('');
+      
+      const categoryStr = details.category ? lv(details.category).toLowerCase() : '';
+      const isTreeDetected = !!(categoryStr.includes('tree') || categoryStr.includes('arbre') || categoryStr.includes('arbol') || categoryStr.includes('árvor') || categoryStr.includes('baum') || categoryStr.includes('pohon') || categoryStr.includes('pno') || categoryStr.includes('나무') || categoryStr.includes('樹木') || categoryStr.includes('树木') || details.family?.toLowerCase().includes('pinaceae') || details.family?.toLowerCase().includes('aceraceae') || details.family?.toLowerCase().includes('cupressaceae'));
+      setEditIsTree(isTreeDetected);
+
       setEditWateringInterval(details.wateringInterval || null);
       setEditRepottingFrequency(details.repottingFrequency || null);
       setEditLastPotSize(details.lastPotSize ? details.lastPotSize.toString().replace(/cm$/i, '').trim() : '');
@@ -249,6 +256,7 @@ export const AddPlantModal: React.FC<AddPlantModalProps> = ({ isOpen, onClose, o
           lastPotSizeCm: editLastPotSizeCm,
           lastWatered: editLastWateredDate,
           houseId: selectedHouseId,
+          isTree: editIsTree,
           provenance: {
             nursery,
             dateOfPurchase,
@@ -474,6 +482,9 @@ export const AddPlantModal: React.FC<AddPlantModalProps> = ({ isOpen, onClose, o
                       houseId: selectedHouseId,
                       createdAt: new Date().toISOString()
                     }));
+                    const categoryStr = details.category ? lv(details.category).toLowerCase() : '';
+                    const isTreeDetected = !!(categoryStr.includes('tree') || categoryStr.includes('arbre') || categoryStr.includes('arbol') || categoryStr.includes('árvor') || categoryStr.includes('baum') || categoryStr.includes('pohon') || categoryStr.includes('pno') || categoryStr.includes('나무') || categoryStr.includes('樹木') || categoryStr.includes('树木') || details.family?.toLowerCase().includes('pinaceae') || details.family?.toLowerCase().includes('aceraceae') || details.family?.toLowerCase().includes('cupressaceae'));
+                    setEditIsTree(isTreeDetected);
                     setScanMode('REVIEW');
                   } catch (err: any) {
                     setError(err.message);
@@ -587,9 +598,41 @@ export const AddPlantModal: React.FC<AddPlantModalProps> = ({ isOpen, onClose, o
                         value={editRoom}
                         onChange={(e) => setEditRoom(e.target.value)}
                     >
-                        <option value="">{t('assign_room_label')}</option>
-                        {ROOM_TYPES.map(r => <option key={r} value={r}>{r}</option>)}
+                        {editIsTree ? (
+                            <>
+                                <option value="">{t('assign_yard_label') || '-- Assign Yard Location --'}</option>
+                                {YARD_TYPES.map(y => {
+                                    const slug = y.toLowerCase().replace(/[\/\s-]/g, '_');
+                                    const key = `room_${slug}`;
+                                    return <option key={y} value={y}>{t(key) || y}</option>;
+                                })}
+                            </>
+                        ) : (
+                            <>
+                                <option value="">{t('assign_room_label')}</option>
+                                {ROOM_TYPES.map(r => {
+                                    const slug = r.toLowerCase().replace(/[\/\s-]/g, '_');
+                                    const key = `room_${slug}`;
+                                    return <option key={r} value={r}>{t(key) || r}</option>;
+                                })}
+                            </>
+                        )}
                     </select>
+                </div>
+                <div className="flex items-center gap-3 h-12 px-4 bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl mt-6">
+                    <input 
+                        type="checkbox" 
+                        id="editIsTree"
+                        checked={editIsTree}
+                        onChange={(e) => {
+                            setEditIsTree(e.target.checked);
+                            setEditRoom('');
+                        }}
+                        className="w-5 h-5 rounded border-gray-300 dark:border-slate-600 text-verdant focus:ring-verdant transition-colors cursor-pointer accent-verdant"
+                    />
+                    <label htmlFor="editIsTree" className="text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 cursor-pointer select-none">
+                        {t('lbl_is_tree') || 'Specimen Tree'}
+                    </label>
                 </div>
                 <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 ml-2">{t('lbl_hydration_interval_days')}</label>
