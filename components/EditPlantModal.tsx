@@ -587,15 +587,26 @@ export const EditPlantModal: React.FC<EditPlantModalProps> = ({ isOpen, onClose,
               <Button 
                 onClick={handleRefreshData} 
                 variant="ghost" 
+                size="icon"
                 className="w-14 h-14 rounded-2xl flex items-center justify-center text-blue-500 hover:bg-blue-50" 
                 disabled={isSaving || isRefreshing}
                 title={t('btn_refresh_ai')}
               >
-                <svg className={`w-6 h-6 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className={`w-7 h-7 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </Button>
-              <Button onClick={onDelete} variant="danger" className="w-14 h-14 rounded-2xl flex items-center justify-center" disabled={isSaving || isRefreshing}><svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></Button>
+              <Button 
+                onClick={onDelete} 
+                variant="danger" 
+                size="icon"
+                className="w-14 h-14 rounded-2xl flex items-center justify-center" 
+                disabled={isSaving || isRefreshing}
+              >
+                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </Button>
               <Button variant="ghost" className="flex-1 h-14 rounded-2xl font-black uppercase tracking-widest text-xs" onClick={onClose} disabled={isSaving || isRefreshing}>{t('cancel')}</Button>
               <Button className="flex-[2] h-14 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-verdant/20" onClick={handleSave} isLoading={isSaving} disabled={isRefreshing}>{t('btn_save_changes')}</Button>
           </div>

@@ -4,7 +4,7 @@ import { nativeFeedback } from '../../services/nativeService';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'icon';
   isLoading?: boolean;
 }
 
@@ -30,6 +30,7 @@ export const Button: React.FC<ButtonProps> = ({
     sm: "px-4 py-2 text-[8px]",
     md: "px-6 py-3 text-[10px]",
     lg: "px-8 py-4 text-[12px]",
+    icon: "p-0 text-[10px]",
   };
 
   return (

@@ -60,7 +60,7 @@ export const initWebLlm = async (onProgress?: (progress: number) => void): Promi
     const isQuota = e.name === 'QuotaExceededError' || e.message?.includes('quota') || e.message?.includes('storage');
     if (isQuota) {
       isLocalDisabledForSession = true;
-      console.error("[LOCAL_AI] Storage Quota Exceeded. Disabling local AI for this session to prevent repeated failures.");
+      console.warn("[LOCAL_AI] Storage Quota Exceeded. Disabling local AI for this session to prevent repeated failures.");
       throw new Error("LOCAL_STORAGE_QUOTA_EXCEEDED");
     }
     throw e;

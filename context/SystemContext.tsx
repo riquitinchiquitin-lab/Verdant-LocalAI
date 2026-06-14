@@ -116,10 +116,11 @@ export const SystemProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       });
       showNotification("LOCAL AI CORE SYNCED", "SUCCESS");
     } catch (e: any) {
-      console.error("Local AI Initialization failed:", e);
       if (e.message === "LOCAL_STORAGE_QUOTA_EXCEEDED") {
+        console.warn("Local AI Initialization failed due to expected storage quota limits:", e);
         showNotification("LOCAL STORAGE FULL: Disabling On-Device AI", "WARNING");
       } else {
+        console.error("Local AI Initialization failed:", e);
         showNotification("LOCAL AI SYNC FAILED", "ERROR");
       }
     } finally {
